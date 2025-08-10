@@ -9,17 +9,42 @@ import pandas as pd
 import numpy as np
 import requests
 import json
+import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
-# For now, we'll create mock data functions since the main src API is not directly accessible
-# In a production environment, you would properly integrate with the main src API
+
+# Import the proper API functions from the main src
+try:
+    import sys
+    sys.path.append('/Users/manojnarender/Downloads/ai-hedge-fund/src')
+    from tools.api import get_prices as api_get_prices, get_financial_metrics as api_get_financial_metrics, get_company_news as api_get_company_news, get_insider_trades as api_get_insider_trades, get_market_cap as api_get_market_cap
+    from data.models import Price as APIPrice, FinancialMetrics as APIFinancialMetrics, CompanyNews as APICompanyNews, InsiderTrade as APIInsiderTrade
+    API_AVAILABLE = True
+except ImportError:
+    print("Warning: Could not import main API functions. Falling back to mock data.")
+    API_AVAILABLE = False
 
 def get_prices(ticker: str, start_date: str, end_date: str, api_key: str = None):
-    """Mock function - replace with actual API call"""
-    # This would normally call the main src API
-    # For demo purposes, return mock data
+    """Get price data using Financial Datasets API or fallback to mock data"""
+    if API_AVAILABLE:
+        try:
+            api_key = api_key or os.environ.get("FINANCIAL_DATASETS_API_KEY")
+            api_prices = api_get_prices(ticker, start_date, end_date, api_key)
+            # Convert API prices to our Price format
+            return [Price(
+                open=p.open,
+                close=p.close,
+                high=p.high,
+                low=p.low,
+                volume=p.volume,
+                time=p.time
+            ) for p in api_prices]
+        except Exception as e:
+            print(f"Warning: API call failed for {ticker} prices: {e}. Using mock data.")
+    
+    # Fallback to mock data
     from dataclasses import dataclass
     
     @dataclass
@@ -61,69 +86,48 @@ def get_prices(ticker: str, start_date: str, end_date: str, api_key: str = None)
     return prices
 
 def get_financial_metrics(ticker: str, end_date: str, period: str = "ttm", limit: int = 10, api_key: str = None):
-    """Mock function - replace with actual API call"""
-    return []  # Return empty for demo
+    """Get financial metrics using Financial Datasets API or fallback to empty"""
+    if API_AVAILABLE:
+        try:
+            api_key = api_key or os.environ.get("FINANCIAL_DATASETS_API_KEY")
+            api_metrics = api_get_financial_metrics(ticker, end_date, period, limit, api_key)
+            # Convert API metrics to our FinancialMetrics format
+            return [FinancialMetrics(
+                ticker=m.ticker,
+                report_period=m.report_period,
+                period=m.period,
+                currency=m.currency,
+                market_cap=m.market_cap,
+                enterprise_value=m.enterprise_value,
+                price_to_earnings_ratio=m.price_to_earnings_ratio,
+                price_to_book_ratio=m.price_to_book_ratio,
+                # Add other relevant fields as needed
+            ) for m in api_metrics]
+        except Exception as e:
+            print(f"Warning: API call failed for {ticker} financial metrics: {e}")
+    
+    return []  # Return empty for demo/fallback
 
 def get_company_news(ticker: str, end_date: str, start_date: str = None, limit: int = 1000, api_key: str = None):
-    """Get company news from NewsAPI or fallback to mock data"""
-    try:
-        # Try to get news from NewsAPI (free tier)
-        if api_key:
-            url = "https://newsapi.org/v2/everything"
-            params = {
-                'q': f'{ticker} OR "{ticker}"',
-                'apiKey': api_key,
-                'sortBy': 'publishedAt',
-                'language': 'en',
-                'pageSize': min(limit, 100),
-                'to': end_date
-            }
-            if start_date:
-                params['from'] = start_date
-            
-            response = requests.get(url, params=params, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                articles = data.get('articles', [])
-                
-                news_items = []
-                for article in articles:
-                    # Simple sentiment analysis based on keywords
-                    title = article.get('title', '').lower()
-                    description = article.get('description', '').lower() if article.get('description') else ''
-                    content = f"{title} {description}"
-                    
-                    # Basic sentiment classification
-                    positive_words = ['growth', 'profit', 'gain', 'up', 'rise', 'success', 'beat', 'strong', 'bullish', 'positive', 'upgrade', 'buy']
-                    negative_words = ['loss', 'down', 'fall', 'decline', 'weak', 'bearish', 'negative', 'sell', 'downgrade', 'lawsuit', 'investigation']
-                    
-                    positive_count = sum(1 for word in positive_words if word in content)
-                    negative_count = sum(1 for word in negative_words if word in content)
-                    
-                    if positive_count > negative_count:
-                        sentiment = 'positive'
-                    elif negative_count > positive_count:
-                        sentiment = 'negative'
-                    else:
-                        sentiment = 'neutral'
-                    
-                    news_items.append(CompanyNews(
-                        title=article.get('title', ''),
-                        description=article.get('description', ''),
-                        date=article.get('publishedAt', '')[:10],  # Extract date part
-                        url=article.get('url', ''),
-                        source=article.get('source', {}).get('name', ''),
-                        sentiment=sentiment
-                    ))
-                
-                return news_items
-        
-        # Fallback to mock data with realistic news items
-        return _generate_mock_news(ticker, start_date, end_date, limit)
-        
-    except Exception as e:
-        print(f"Warning: Could not fetch news for {ticker}: {e}")
-        return _generate_mock_news(ticker, start_date, end_date, limit)
+    """Get company news using Financial Datasets API or fallback to mock data"""
+    if API_AVAILABLE:
+        try:
+            api_key = api_key or os.environ.get("FINANCIAL_DATASETS_API_KEY")
+            api_news = api_get_company_news(ticker, end_date, start_date, limit, api_key)
+            # Convert API news to our CompanyNews format
+            return [CompanyNews(
+                title=n.title,
+                description=getattr(n, 'description', ''),
+                date=n.date,
+                url=n.url,
+                source=n.source,
+                sentiment=n.sentiment
+            ) for n in api_news]
+        except Exception as e:
+            print(f"Warning: API call failed for {ticker} news: {e}. Using mock data.")
+    
+    # Fallback to mock data with realistic news items
+    return _generate_mock_news(ticker, start_date, end_date, limit)
 
 def _generate_mock_news(ticker: str, start_date: str, end_date: str, limit: int) -> List:
     """Generate realistic mock news data for demonstration"""
@@ -193,11 +197,41 @@ def _generate_mock_news(ticker: str, start_date: str, end_date: str, limit: int)
     return news_items
 
 def get_insider_trades(ticker: str, end_date: str, start_date: str = None, limit: int = 1000, api_key: str = None):
-    """Mock function - replace with actual API call"""
-    return []  # Return empty for demo
+    """Get insider trades using Financial Datasets API or fallback to empty"""
+    if API_AVAILABLE:
+        try:
+            api_key = api_key or os.environ.get("FINANCIAL_DATASETS_API_KEY")
+            api_trades = api_get_insider_trades(ticker, end_date, start_date, limit, api_key)
+            # Convert API trades to our InsiderTrade format
+            return [InsiderTrade(
+                ticker=t.ticker,
+                issuer=t.issuer,
+                name=t.name,
+                title=t.title,
+                is_board_director=t.is_board_director,
+                transaction_date=t.transaction_date,
+                transaction_shares=t.transaction_shares,
+                transaction_price_per_share=t.transaction_price_per_share,
+                transaction_value=t.transaction_value,
+                shares_owned_before_transaction=t.shares_owned_before_transaction,
+                shares_owned_after_transaction=t.shares_owned_after_transaction,
+                security_title=t.security_title,
+                filing_date=t.filing_date
+            ) for t in api_trades]
+        except Exception as e:
+            print(f"Warning: API call failed for {ticker} insider trades: {e}")
+    
+    return []  # Return empty for demo/fallback
 
 def get_market_cap(ticker: str, end_date: str, api_key: str = None):
-    """Mock function - replace with actual API call"""
+    """Get market cap using Financial Datasets API or fallback to None"""
+    if API_AVAILABLE:
+        try:
+            api_key = api_key or os.environ.get("FINANCIAL_DATASETS_API_KEY")
+            return api_get_market_cap(ticker, end_date, api_key)
+        except Exception as e:
+            print(f"Warning: API call failed for {ticker} market cap: {e}")
+    
     return None
 
 # Mock data models
@@ -399,7 +433,7 @@ class QuarterlyDataExtractor:
         }
     
     def analyze_insider_activity(self, trades: List[InsiderTrade]) -> Dict[str, float]:
-        """Analyze insider trading activity"""
+        """Analyze insider trading activity with improved logic"""
         if not trades:
             return {
                 "count": 0,
@@ -407,17 +441,28 @@ class QuarterlyDataExtractor:
             }
         
         net_buying = 0.0
+        buy_count = 0
+        sell_count = 0
+        
         for trade in trades:
-            if trade.transaction_value:
-                # Positive for purchases, negative for sales
-                if trade.transaction_shares and trade.transaction_shares > 0:
-                    net_buying += trade.transaction_value
-                else:
-                    net_buying -= abs(trade.transaction_value or 0)
+            if trade.transaction_value and trade.transaction_shares:
+                # Determine if it's a buy or sell based on transaction_shares sign
+                # Positive shares = purchase, negative shares = sale
+                if trade.transaction_shares > 0:
+                    # This is a purchase (positive contribution to net buying)
+                    net_buying += abs(trade.transaction_value)
+                    buy_count += 1
+                elif trade.transaction_shares < 0:
+                    # This is a sale (negative contribution to net buying)
+                    net_buying -= abs(trade.transaction_value)
+                    sell_count += 1
         
         return {
             "count": len(trades),
-            "net_buying": net_buying
+            "net_buying": net_buying,
+            "buy_count": buy_count,
+            "sell_count": sell_count,
+            "buy_sell_ratio": buy_count / max(sell_count, 1)  # Avoid division by zero
         }
     
     def extract_quarterly_performance(self, ticker: str, quarter_start: str, quarter_end: str) -> QuarterlyPerformance:
@@ -495,7 +540,7 @@ class QuarterlyDataExtractor:
     
     def extract_market_context(self, quarter_start: str, quarter_end: str) -> Dict[str, float]:
         """Extract market benchmark performance for context"""
-        benchmarks = ["SPY", "QQQ", "IWM"]  # S&P 500, NASDAQ, Russell 2000
+        benchmarks = ["SPY", "QQQ"]  # S&P 500, NASDAQ (removed IWM - not supported by API)
         market_context = {}
         
         for benchmark in benchmarks:

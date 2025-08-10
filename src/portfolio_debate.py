@@ -578,6 +578,10 @@ class PortfolioDebateSystem:
     def generate_trading_actions_json(self, result: PortfolioDebateResult) -> str:
         """Generate JSON output with percentage changes and trading actions for each stock"""
         
+        # Ensure rebalanced weights are calculated and normalized
+        if not result.suggested_weights:
+            result._calculate_rebalanced_weights()
+        
         trading_actions = []
         
         for ticker, consensus in result.individual_results.items():
@@ -593,10 +597,8 @@ class PortfolioDebateSystem:
                 
             current_weight = holding.weight
             
-            # Calculate suggested new weight based on consensus
-            suggested_weight = self._calculate_suggested_weight(
-                current_weight, consensus.signal, consensus.confidence
-            )
+            # Use normalized suggested weight from rebalanced portfolio
+            suggested_weight = result.suggested_weights.get(ticker, current_weight)
             
             # Calculate percentage change
             weight_change = suggested_weight - current_weight
@@ -679,7 +681,7 @@ class PortfolioDebateSystem:
         """Determine trading action based on weight changes"""
         
         # Define thresholds - weight_change is in decimal form (e.g., 0.01 = 1%)
-        hold_threshold = 0.01  # 1% threshold for hold vs buy/sell
+        hold_threshold = 0.001  # 1% threshold for hold vs buy/sell
         
         if abs(weight_change) < hold_threshold:
             return "hold"
