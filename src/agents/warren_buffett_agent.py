@@ -15,6 +15,8 @@ class WarrenBuffettSignal(BaseModel):
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
+    suggested_weight: float = None  # Suggested portfolio weight (0.0 to 1.0)
+    weight_reasoning: str = None    # Reasoning for the weight suggestion
 
 
 class WarrenBuffettAgent:
@@ -23,7 +25,7 @@ class WarrenBuffettAgent:
     def __init__(self):
         self.agent_name = "Warren Buffett"
     
-    def analyze_stock(self, ticker: str, end_date: str = "2024-12-31") -> WarrenBuffettSignal:
+    def analyze_stock(self, ticker: str, end_date: str = "2024-12-31", current_weight: float = None, portfolio_context: dict = None) -> WarrenBuffettSignal:
         """Analyze a stock using Buffett's investment principles"""
         
         # Fetch financial data
@@ -68,11 +70,13 @@ class WarrenBuffettAgent:
             "management_analysis": management_analysis.to_dict(),
             "intrinsic_value_analysis": intrinsic_value_analysis.to_dict(),
             "recent_metrics": metrics[:2] if metrics else [],
-            "recent_financials": financial_line_items[:2] if financial_line_items else []
+            "recent_financials": financial_line_items[:2] if financial_line_items else [],
+            "current_weight": current_weight,
+            "portfolio_context": portfolio_context
         }
         
         # Generate final investment decision using LLM
-        return self._generate_buffett_decision(ticker, analysis_data)
+        return self._generate_buffett_decision(ticker, analysis_data, current_weight, portfolio_context)
     
     def _analyze_fundamentals(self, metrics) -> AnalysisResult:
         """Analyze fundamental metrics like ROE, debt levels, margins"""
@@ -261,7 +265,7 @@ class WarrenBuffettAgent:
             max_score=3
         )
     
-    def _generate_buffett_decision(self, ticker: str, analysis_data: dict) -> WarrenBuffettSignal:
+    def _generate_buffett_decision(self, ticker: str, analysis_data: dict, current_weight: float = None, portfolio_context: dict = None) -> WarrenBuffettSignal:
         """Generate final investment decision using LLM with Buffett's voice"""
         
         template = ChatPromptTemplate.from_messages([
@@ -308,6 +312,83 @@ CONFIDENCE LEVELS:
 COMPREHENSIVE ANALYSIS DATA:
 {analysis_data}
 
+PORTFOLIO CONTEXT:
+Current Weight: {current_weight}% of portfolio
+Portfolio Information: {portfolio_info}
+
+Please provide your investment decision in exactly this JSON format:
+{{
+  "signal": "bullish" | "bearish" | "neutral",
+  "confidence": float between 0 and 100,
+  "reasoning": "string with your detailed Warren Buffett-style analysis",
+  "suggested_weight": float between 0.0 and 1.0 (suggested portfolio allocation),
+  "weight_reasoning": "string explaining your portfolio weight recommendation"
+}}
+
+In your reasoning, be specific about:
+1. Whether this falls within your circle of competence (CRITICAL FIRST STEP)
+2. Your assessment of the business's competitive moat
+3. Management quality and capital allocation
+4. Financial health and consistency
+5. Valuation relative to intrinsic value
+6. Long-term prospects and any red flags
+
+In your weight_reasoning, consider:
+1. Current portfolio allocation vs your suggested allocation
+2. Position sizing based on conviction level and risk
+3. Diversification principles (avoid over-concentration)
+4. How this fits with other portfolio holdings
+5. Whether to increase, decrease, or maintain current weight
+
+Remember my principles:
+- "Diversification is protection against ignorance" - but concentration in great businesses is fine
+- Never put more than 20-25% in any single position unless extraordinary conviction
+- Size positions based on opportunity quality and downside protection
+- "It's far better to buy a wonderful company at a fair price than a fair company at a wonderful price"
+
+Write as Warren Buffett would speak - plainly, with conviction, and with specific references to the data provided.""")
+        ])
+        
+        # Format portfolio context for display
+        current_weight_pct = (current_weight * 100) if current_weight is not None else "Unknown"
+        portfolio_info = json.dumps(portfolio_context, indent=2) if portfolio_context else "No portfolio context provided"
+        
+        # If no portfolio context, use simplified prompt
+        if current_weight is None and portfolio_context is None:
+            # Use original prompt without portfolio context
+            template = ChatPromptTemplate.from_messages([
+                ("system", """You are Warren Buffett, the legendary value investor and CEO of Berkshire Hathaway. You are analyzing stocks for potential investment using your time-tested principles.
+
+YOUR INVESTMENT PHILOSOPHY:
+- "Price is what you pay, value is what you get"
+- Focus on businesses you understand (circle of competence)
+- Look for companies with durable competitive advantages (moats)
+- Prefer predictable earnings and strong management
+- Buy wonderful companies at fair prices
+- Think like you're buying the whole business
+- Hold forever if the business remains wonderful
+- Margin of safety is crucial
+
+SPEAKING STYLE:
+- Use folksy wisdom and simple analogies
+- Reference your past investments (Coca-Cola, Apple, GEICO, etc.)
+- Be humble but confident in your convictions
+- Explain complex concepts simply
+- Show patience - most opportunities don't meet my criteria
+- Express genuine enthusiasm for truly exceptional businesses
+
+CONFIDENCE LEVELS:
+- 90-100%: Exceptional business within my circle, attractive price
+- 70-89%: Good business with decent moat, fair valuation
+- 50-69%: Mixed signals, need more information or better price
+- 30-49%: Outside my expertise or concerning fundamentals
+- 10-29%: Poor business or significantly overvalued"""),
+                
+                ("human", """Analyze this investment opportunity for {ticker}:
+
+COMPREHENSIVE ANALYSIS DATA:
+{analysis_data}
+
 Please provide your investment decision in exactly this JSON format:
 {{
   "signal": "bullish" | "bearish" | "neutral",
@@ -324,11 +405,20 @@ In your reasoning, be specific about:
 6. Long-term prospects and any red flags
 
 Write as Warren Buffett would speak - plainly, with conviction, and with specific references to the data provided.""")
-        ])
+            ])
+            
+            prompt = template.invoke({
+                "analysis_data": json.dumps(analysis_data, indent=2),
+                "ticker": ticker
+            })
+            
+            return call_llm(prompt, WarrenBuffettSignal)
         
         prompt = template.invoke({
             "analysis_data": json.dumps(analysis_data, indent=2),
-            "ticker": ticker
+            "ticker": ticker,
+            "current_weight": current_weight_pct,
+            "portfolio_info": portfolio_info
         })
         
         return call_llm(prompt, WarrenBuffettSignal)

@@ -1,13 +1,18 @@
+#!/usr/bin/env python3
 """
-Agent Consensus Debate System - Moderated Discussion Between Investment Agents
+Investment Debate System
+
+Conducts moderated debates between Warren Buffett and Cathie Wood investment agents.
 """
-import os
+
 import sys
-from typing import List, Dict, Any
+from typing import Dict, List, Any, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from rich.console import Console
+from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
-from rich.table import Table
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -16,6 +21,19 @@ from agents.warren_buffett_agent import WarrenBuffettAgent, WarrenBuffettSignal
 from agents.cathie_wood_agent import CathieWoodAgent, CathieWoodSignal
 from agents.moderator_agent import ModeratorAgent, DebatePoint, ConsensusDecision
 from utils import call_llm
+
+
+@dataclass
+class DebateResult:
+    """Result of a complete debate between agents"""
+    ticker: str
+    buffett_initial: WarrenBuffettSignal
+    wood_initial: CathieWoodSignal
+    buffett_response: Optional[Any] = None
+    wood_response: Optional[Any] = None
+    buffett_challenge: Optional[Any] = None
+    wood_challenge: Optional[Any] = None
+    final_decision: Optional[ConsensusDecision] = None
 
 # Load environment variables
 load_dotenv()
@@ -38,17 +56,127 @@ class AgentDebateSystem:
         self.moderator = ModeratorAgent()
         self.debate_history = []
     
-    def conduct_debate(self, ticker: str, end_date: str = "2024-12-31") -> ConsensusDecision:
+    def conduct_debate_with_initial_analyses(self, ticker: str, buffett_initial, wood_initial, end_date: str = "2024-12-31", current_weight: float = None, portfolio_context: dict = None) -> 'DebateResult':
+        """Conduct debate using pre-computed initial analyses (for parallel optimization)"""
+        
+        console = Console()
+        console.print(f"\n[bold blue]🎯 Investment Debate for {ticker}[/bold blue]")
+        console.print("=" * 60)
+        
+        # Skip Phase 1 since we have pre-computed initial analyses
+        console.print("\n[bold yellow]📋 Phase 1: Using Pre-computed Initial Analyses[/bold yellow]")
+        
+        self._display_initial_presentations(ticker, buffett_initial, wood_initial)
+        
+        # Phase 2: Cross-examination
+        console.print("\n[bold yellow]🔍 Phase 2: Cross-Examination[/bold yellow]")
+        
+        # Buffett challenges Wood
+        buffett_challenge = self.moderator.generate_challenge_question(
+            ticker, buffett_initial, wood_initial, "buffett_to_wood"
+        )
+        console.print(f"\n[cyan]Warren Buffett's Challenge:[/cyan]")
+        console.print(f"[dim]{buffett_challenge.question}[/dim]")
+        
+        wood_response = self.cathie_wood.respond_to_debate(
+            ticker, wood_initial, buffett_initial, buffett_challenge.question
+        )
+        console.print(f"\n[green]Cathie Wood's Response:[/green]")
+        console.print(f"[dim]{wood_response.response}[/dim]")
+        
+        # Wood challenges Buffett
+        wood_challenge = self.moderator.generate_challenge_question(
+            ticker, wood_initial, buffett_initial, "wood_to_buffett"
+        )
+        console.print(f"\n[green]Cathie Wood's Challenge:[/green]")
+        console.print(f"[dim]{wood_challenge.question}[/dim]")
+        
+        buffett_response = self.warren_buffett.respond_to_debate(
+            ticker, buffett_initial, wood_initial, wood_challenge.question
+        )
+        console.print(f"\n[cyan]Warren Buffett's Response:[/cyan]")
+        console.print(f"[dim]{buffett_response.response}[/dim]")
+        
+        # Phase 3: Final consensus
+        console.print("\n[bold yellow]⚖️ Phase 3: Moderator's Final Decision[/bold yellow]")
+        
+        final_decision = self.moderator.make_final_decision(
+            ticker,
+            buffett_initial, wood_initial,
+            buffett_response, wood_response,
+            buffett_challenge, wood_challenge
+        )
+        
+        self._display_consensus(ticker, final_decision)
+        
+        # Create result object
+        result = DebateResult(
+            ticker=ticker,
+            buffett_initial=buffett_initial,
+            wood_initial=wood_initial,
+            buffett_response=buffett_response,
+            wood_response=wood_response,
+            buffett_challenge=buffett_challenge,
+            wood_challenge=wood_challenge,
+            final_decision=final_decision
+        )
+        
+        return result
+    
+    def conduct_batch_debate(self, tickers: List[str], end_date: str = "2024-12-31") -> Dict[str, 'DebateResult']:
+        """Conduct batch debates for multiple tickers"""
+        
+        results = {}
+        
+        for ticker in tickers:
+            buffett_initial = self.warren_buffett.analyze_stock(ticker, end_date)
+            wood_initial = self.cathie_wood.analyze_stock(ticker, end_date)
+            
+            result = self.conduct_debate_with_initial_analyses(ticker, buffett_initial, wood_initial, end_date)
+            
+            results[ticker] = result
+        
+        return results
+    
+    def conduct_debate(self, ticker: str, end_date: str = "2024-12-31", current_weight: float = None, portfolio_context: dict = None) -> ConsensusDecision:
         """Conduct a full moderated debate and reach consensus"""
         
         console.print(f"\n[bold blue]🎯 Investment Debate for {ticker}[/bold blue]")
         console.print("=" * 60)
         
-        # Phase 1: Initial Presentations
-        console.print("\n[bold yellow]📋 Phase 1: Initial Presentations[/bold yellow]")
+        # Phase 1: Initial presentations from both agents (run in parallel)
+        console.print("\n[bold yellow]📋 Phase 1: Initial Agent Presentations[/bold yellow]")
+        console.print(f"[dim]Running parallel analysis for {ticker}...[/dim]")
         
-        buffett_initial = self.warren_buffett.analyze_stock(ticker, end_date)
-        wood_initial = self.cathie_wood.analyze_stock(ticker, end_date)
+        # Run both agent analyses in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both analysis tasks
+            buffett_future = executor.submit(
+                self.warren_buffett.analyze_stock, 
+                ticker, end_date, current_weight, portfolio_context
+            )
+            wood_future = executor.submit(
+                self.cathie_wood.analyze_stock, 
+                ticker, end_date, current_weight, portfolio_context
+            )
+            
+            # Collect results as they complete
+            futures = {buffett_future: "Warren Buffett", wood_future: "Cathie Wood"}
+            results = {}
+            
+            for future in as_completed(futures):
+                agent_name = futures[future]
+                try:
+                    result = future.result()
+                    results[agent_name] = result
+                    console.print(f"[green]✅ {agent_name} analysis complete[/green]")
+                except Exception as e:
+                    console.print(f"[red]❌ {agent_name} analysis failed: {str(e)}[/red]")
+                    raise e
+        
+        # Extract results
+        buffett_initial = results["Warren Buffett"]
+        wood_initial = results["Cathie Wood"]
         
         self._display_initial_presentations(ticker, buffett_initial, wood_initial)
         
@@ -112,33 +240,47 @@ class AgentDebateSystem:
         return consensus
     
     def _display_initial_presentations(self, ticker: str, buffett_result: WarrenBuffettSignal, wood_result: CathieWoodSignal):
-        """Display initial presentations from both agents"""
+        """Display initial agent presentations"""
         
-        # Warren Buffett's presentation
-        buffett_content = Text()
-        buffett_content.append(f"Signal: ", style="bold")
-        buffett_content.append(f"{buffett_result.signal.upper()}", style=f"bold {'green' if buffett_result.signal == 'bullish' else 'red' if buffett_result.signal == 'bearish' else 'yellow'}")
-        buffett_content.append(f"\nConfidence: {buffett_result.confidence:.1f}%\n\n", style="bold")
-        buffett_content.append(f"{buffett_result.reasoning}")
+        # Warren Buffett's analysis
+        buffett_content = (
+            f"[bold]Signal:[/bold] {buffett_result.signal.upper()}\n"
+            f"[bold]Confidence:[/bold] {buffett_result.confidence:.1f}%\n"
+        )
         
-        console.print(Panel(
+        if buffett_result.suggested_weight is not None:
+            buffett_content += f"[bold]Suggested Weight:[/bold] {buffett_result.suggested_weight:.1%}\n"
+            if buffett_result.weight_reasoning:
+                buffett_content += f"[bold]Weight Reasoning:[/bold] {buffett_result.weight_reasoning}\n"
+        
+        buffett_content += f"\n[bold]Analysis:[/bold]\n{buffett_result.reasoning}"
+        
+        buffett_panel = Panel(
             buffett_content,
-            title="[bold blue]🏛️  Warren Buffett's Opening Statement[/bold blue]",
+            title=f"💼 Warren Buffett's Analysis of {ticker}",
             border_style="blue"
-        ))
+        )
+        console.print(buffett_panel)
         
-        # Cathie Wood's presentation
-        wood_content = Text()
-        wood_content.append(f"Signal: ", style="bold")
-        wood_content.append(f"{wood_result.signal.upper()}", style=f"bold {'green' if wood_result.signal == 'bullish' else 'red' if wood_result.signal == 'bearish' else 'yellow'}")
-        wood_content.append(f"\nConfidence: {wood_result.confidence:.1f}%\n\n", style="bold")
-        wood_content.append(f"{wood_result.reasoning}")
+        # Cathie Wood's analysis
+        wood_content = (
+            f"[bold]Signal:[/bold] {wood_result.signal.upper()}\n"
+            f"[bold]Confidence:[/bold] {wood_result.confidence:.1f}%\n"
+        )
         
-        console.print(Panel(
+        if wood_result.suggested_weight is not None:
+            wood_content += f"[bold]Suggested Weight:[/bold] {wood_result.suggested_weight:.1%}\n"
+            if wood_result.weight_reasoning:
+                wood_content += f"[bold]Weight Reasoning:[/bold] {wood_result.weight_reasoning}\n"
+        
+        wood_content += f"\n[bold]Analysis:[/bold]\n{wood_result.reasoning}"
+        
+        wood_panel = Panel(
             wood_content,
-            title="[bold purple]🚀 Cathie Wood's Opening Statement[/bold purple]",
-            border_style="purple"
-        ))
+            title=f"🚀 Cathie Wood's Analysis of {ticker}",
+            border_style="green"
+        )
+        console.print(wood_panel)
     
     def _display_disagreements(self, debate_point: DebatePoint):
         """Display the moderator's analysis of disagreements"""

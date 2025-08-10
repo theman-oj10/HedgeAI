@@ -15,6 +15,8 @@ class CathieWoodSignal(BaseModel):
     signal: Literal["bullish", "bearish", "neutral"]
     confidence: float
     reasoning: str
+    suggested_weight: float = None  # Suggested portfolio weight (0.0 to 1.0)
+    weight_reasoning: str = None    # Reasoning for the weight suggestion
 
 
 class CathieWoodAgent:
@@ -23,7 +25,7 @@ class CathieWoodAgent:
     def __init__(self):
         self.agent_name = "Cathie Wood"
     
-    def analyze_stock(self, ticker: str, end_date: str = "2024-12-31") -> CathieWoodSignal:
+    def analyze_stock(self, ticker: str, end_date: str = "2024-12-31", current_weight: float = None, portfolio_context: dict = None) -> CathieWoodSignal:
         """Analyze a stock using Cathie Wood's innovation-focused investment principles"""
         
         # Fetch financial data
@@ -60,16 +62,17 @@ class CathieWoodAgent:
         analysis_data = {
             "ticker": ticker,
             "market_cap": market_cap,
-            "disruptive_analysis": disruptive_analysis.to_dict(),
-            "innovation_analysis": innovation_analysis.to_dict(),
+            "disruptive_potential": disruptive_analysis.to_dict(),
+            "innovation_growth": innovation_analysis.to_dict(),
             "valuation_analysis": valuation_analysis.to_dict(),
-            "tam_analysis": tam_analysis.to_dict(),
             "recent_metrics": metrics[:2] if metrics else [],
-            "recent_financials": financial_line_items[:2] if financial_line_items else []
+            "recent_financials": financial_line_items[:2] if financial_line_items else [],
+            "current_weight": current_weight,
+            "portfolio_context": portfolio_context
         }
         
         # Generate final investment decision using LLM
-        return self._generate_cathie_wood_decision(ticker, analysis_data)
+        return self._generate_cathie_wood_decision(ticker, analysis_data, current_weight, portfolio_context)
     
     def _analyze_disruptive_potential(self, metrics, financial_line_items) -> AnalysisResult:
         """Analyze whether the company has disruptive products, technology, or business model"""
@@ -239,7 +242,7 @@ class CathieWoodAgent:
             max_score=3
         )
     
-    def _generate_cathie_wood_decision(self, ticker: str, analysis_data: dict) -> CathieWoodSignal:
+    def _generate_cathie_wood_decision(self, ticker: str, analysis_data: dict, current_weight: float = None, portfolio_context: dict = None) -> CathieWoodSignal:
         """Generate final investment decision using LLM with Cathie Wood's voice"""
         
         template = ChatPromptTemplate.from_messages([
@@ -292,7 +295,93 @@ CONFIDENCE LEVELS:
 - 30-49%: Limited innovation or small addressable market
 - 10-29%: Incremental improvement rather than true disruption"""),
             
-            ("human", """Based on the following analysis, create a Cathie Wood-style investment signal for {ticker}:
+            ("human", """Analyze this investment opportunity for {ticker}:
+
+COMPREHENSIVE ANALYSIS DATA:
+{analysis_data}
+
+PORTFOLIO CONTEXT:
+Current Weight: {current_weight}% of portfolio
+Portfolio Information: {portfolio_info}
+
+Please provide your investment decision in exactly this JSON format:
+{{
+  "signal": "bullish" | "bearish" | "neutral",
+  "confidence": float between 0 and 100,
+  "reasoning": "string with your detailed Cathie Wood-style analysis",
+  "suggested_weight": float between 0.0 and 1.0 (suggested portfolio allocation),
+  "weight_reasoning": "string explaining your portfolio weight recommendation"
+}}
+
+In your reasoning, be specific about:
+1. The disruptive potential and innovation trajectory
+2. Total Addressable Market (TAM) expansion potential
+3. Network effects and platform advantages
+4. R&D investment and technological moats
+5. Management's vision and execution capability
+6. Long-term growth potential vs current valuation
+
+In your weight_reasoning, consider:
+1. Current portfolio allocation vs your suggested allocation
+2. Position sizing based on conviction in disruptive potential
+3. Concentration vs diversification for innovation plays
+4. How this fits with other disruptive technology holdings
+5. Whether to increase, decrease, or maintain current weight
+
+Remember my investment philosophy:
+- Concentrate in highest conviction disruptive innovations
+- Size positions based on transformative potential and time horizon
+- Willing to accept higher volatility for exponential growth potential
+- Focus on companies solving big problems with large TAMs
+- "We invest in companies that we believe are going to change the world"
+
+Write as Cathie Wood would speak - with enthusiasm for innovation, focus on exponential growth, and conviction about transformative technologies.""")
+        ])
+        
+        # Format portfolio context for display
+        current_weight_pct = (current_weight * 100) if current_weight is not None else "Unknown"
+        portfolio_info = json.dumps(portfolio_context, indent=2) if portfolio_context else "No portfolio context provided"
+        
+        # If no portfolio context, use simplified prompt
+        if current_weight is None and portfolio_context is None:
+            # Use original prompt without portfolio context
+            template = ChatPromptTemplate.from_messages([
+                ("system", """You are Cathie Wood, CEO and CIO of ARK Invest, known for your focus on disruptive innovation and transformative technologies. You analyze investments through the lens of exponential growth and technological disruption.
+
+YOUR INVESTMENT PHILOSOPHY:
+- Focus on disruptive innovation that can create exponential growth
+- Invest in companies solving big problems with large addressable markets
+- Look for network effects and platform advantages
+- Prioritize R&D investment and technological moats
+- Accept higher volatility for transformative potential
+- Think in 5-10 year time horizons
+- "We invest in companies that we believe are going to change the world"
+
+KEY FOCUS AREAS:
+- Artificial Intelligence and Machine Learning
+- Robotics and Automation
+- Genomics and Biotechnology
+- Fintech and Digital Wallets
+- Electric Vehicles and Autonomous Technology
+- Space Exploration and Satellite Technology
+- Blockchain and Cryptocurrency
+
+SPEAKING STYLE:
+- Enthusiastic about innovation and future possibilities
+- Use specific examples of technological trends
+- Reference exponential growth curves and S-curves
+- Discuss Total Addressable Market (TAM) expansion
+- Show conviction about transformative technologies
+- Explain how technologies converge and compound
+
+CONFIDENCE LEVELS:
+- 90-100%: Revolutionary technology with massive TAM and strong execution
+- 70-89%: Clear disruptive potential with good market position
+- 50-69%: Promising innovation but execution or market risks
+- 30-49%: Limited innovation or small addressable market
+- 10-29%: Incremental improvement rather than true disruption"""),
+                
+                ("human", """Analyze this investment opportunity for {ticker}:
 
 COMPREHENSIVE ANALYSIS DATA:
 {analysis_data}
@@ -305,19 +394,28 @@ Please provide your investment decision in exactly this JSON format:
 }}
 
 In your reasoning, be specific about:
-1. The specific disruptive technologies/innovations the company is leveraging
-2. Growth metrics that indicate exponential potential (revenue acceleration, expanding TAM)
-3. Long-term vision and transformative potential over 5+ year horizons
-4. How the company might disrupt traditional industries or create new markets
-5. R&D investment and innovation pipeline that could drive future growth
-6. Market opportunity and current penetration levels
+1. The disruptive potential and innovation trajectory
+2. Total Addressable Market (TAM) expansion potential
+3. Network effects and platform advantages
+4. R&D investment and technological moats
+5. Management's vision and execution capability
+6. Long-term growth potential vs current valuation
 
-Use my optimistic, future-focused, and conviction-driven voice with specific references to the data provided.""")
-        ])
+Write as Cathie Wood would speak - with enthusiasm for innovation, focus on exponential growth, and conviction about transformative technologies.""")
+            ])
+            
+            prompt = template.invoke({
+                "analysis_data": json.dumps(analysis_data, indent=2),
+                "ticker": ticker
+            })
+            
+            return call_llm(prompt, CathieWoodSignal)
         
         prompt = template.invoke({
             "analysis_data": json.dumps(analysis_data, indent=2),
-            "ticker": ticker
+            "ticker": ticker,
+            "current_weight": current_weight_pct,
+            "portfolio_info": portfolio_info
         })
         
         return call_llm(prompt, CathieWoodSignal)

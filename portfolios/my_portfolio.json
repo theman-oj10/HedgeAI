@@ -1,0 +1,27 @@
+{
+  "name": "My Investment Portfolio",
+  "holdings": [
+    {
+      "ticker": "AAPL",
+      "weight": 0.25
+    },
+    {
+      "ticker": "MSFT", 
+      "weight": 0.20
+    },
+    {
+      "ticker": "GOOGL",
+      "weight": 0.15
+    },
+    {
+      "ticker": "TSLA",
+      "weight": 0.15
+    },
+    {
+      "ticker": "NVDA",
+      "weight": 0.15
+    }
+  ],
+  "cash_weight": 0.10,
+  "rebalance_threshold": 0.05
+}

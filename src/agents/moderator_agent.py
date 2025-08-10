@@ -148,3 +148,98 @@ In your reasoning, explain:
         })
         
         return call_llm(prompt, ConsensusDecision)
+    
+    def generate_challenge_question(self, ticker: str, challenger_analysis, opponent_analysis, direction: str):
+        """Generate a challenge question for the debate"""
+        
+        from pydantic import BaseModel
+        
+        class ChallengeQuestion(BaseModel):
+            question: str
+        
+        if direction == "buffett_to_wood":
+            challenger_name = "Warren Buffett"
+            opponent_name = "Cathie Wood"
+            challenger = challenger_analysis
+            opponent = opponent_analysis
+        else:  # wood_to_buffett
+            challenger_name = "Cathie Wood"
+            opponent_name = "Warren Buffett"
+            challenger = challenger_analysis
+            opponent = opponent_analysis
+        
+        template = ChatPromptTemplate.from_messages([
+            ("system", f"""You are facilitating a debate between Warren Buffett and Cathie Wood. 
+            
+Generate a challenging question that {challenger_name} would ask {opponent_name} about their investment thesis for {{ticker}}.
+
+The question should:
+1. Challenge a key weakness in the opponent's analysis
+2. Highlight where {challenger_name}'s philosophy differs
+3. Be specific and actionable
+4. Force the opponent to defend their position
+5. Stay true to {challenger_name}'s investment style
+
+Make it a thoughtful, professional challenge that could lead to meaningful debate."""),
+            
+            ("human", f"""{challenger_name}'s Analysis:
+Signal: {{challenger_signal}}
+Confidence: {{challenger_confidence}}%
+Reasoning: {{challenger_reasoning}}
+
+{opponent_name}'s Analysis:
+Signal: {{opponent_signal}}
+Confidence: {{opponent_confidence}}%
+Reasoning: {{opponent_reasoning}}
+
+Generate a challenge question that {challenger_name} would ask {opponent_name} about {{ticker}}.""")
+        ])
+        
+        prompt = template.invoke({
+            "ticker": ticker,
+            "challenger_signal": challenger.signal,
+            "challenger_confidence": challenger.confidence,
+            "challenger_reasoning": challenger.reasoning,
+            "opponent_signal": opponent.signal,
+            "opponent_confidence": opponent.confidence,
+            "opponent_reasoning": opponent.reasoning
+        })
+        
+        return call_llm(prompt, ChallengeQuestion)
+    
+    def make_final_decision(self, ticker: str, buffett_initial, wood_initial, buffett_response, wood_response, buffett_challenge, wood_challenge) -> ConsensusDecision:
+        """Make final consensus decision after the full debate"""
+        
+        # Prepare debate history for synthesis
+        debate_history = [
+            {
+                "phase": "initial_presentations",
+                "buffett_analysis": {
+                    "signal": buffett_initial.signal,
+                    "confidence": buffett_initial.confidence,
+                    "reasoning": buffett_initial.reasoning
+                },
+                "wood_analysis": {
+                    "signal": wood_initial.signal,
+                    "confidence": wood_initial.confidence,
+                    "reasoning": wood_initial.reasoning
+                }
+            },
+            {
+                "phase": "cross_examination",
+                "buffett_challenge": buffett_challenge.question,
+                "wood_response": {
+                    "response": wood_response.response,
+                    "updated_signal": wood_response.updated_signal,
+                    "updated_confidence": wood_response.updated_confidence
+                },
+                "wood_challenge": wood_challenge.question,
+                "buffett_response": {
+                    "response": buffett_response.response,
+                    "updated_signal": buffett_response.updated_signal,
+                    "updated_confidence": buffett_response.updated_confidence
+                }
+            }
+        ]
+        
+        return self.synthesize_consensus(ticker, debate_history)
