@@ -1,6 +1,6 @@
 {
   "portfolio_name": "Tech Growth Portfolio",
-  "analysis_timestamp": "2025-08-10T15:59:06.977826",
+  "analysis_timestamp": "2025-08-10T16:08:52.424748",
   "total_holdings": 5,
   "rebalancing_recommended": false,
   "trading_actions": [
@@ -12,30 +12,30 @@
       "percentage_change": 0.0,
       "action": "hold",
       "signal": "neutral",
-      "confidence": 70.0,
-      "reasoning": "The consensus reflects a balanced view of Apple Inc. (AAPL) by weighing both Warren Buffett's concerns about valuation and financial consistency against Cathie Wood's optimism regarding Apple's innova..."
+      "confidence": 72.0,
+      "reasoning": "The consensus decision on AAPL is 'neutral' with a confidence level of 72.0%. Warren Buffett's bearish stance was primarily driven by AAPL's high valuation and lack of sufficient margin of safety, whi..."
     },
     {
       "ticker": "MSFT",
       "current_weight": 2.0,
-      "suggested_weight": 2.0,
-      "weight_change": 0.0,
-      "percentage_change": 0.0,
+      "suggested_weight": 2.43,
+      "weight_change": 0.43,
+      "percentage_change": 21.6,
       "action": "hold",
-      "signal": "neutral",
-      "confidence": 75.0,
-      "reasoning": "In synthesizing the views of Warren Buffett and Cathie Wood regarding Microsoft (MSFT), we find a middle ground that acknowledges both the company's strong fundamentals and the concerns about its valu..."
+      "signal": "bullish",
+      "confidence": 72.0,
+      "reasoning": "The consensus decision is bullish on MSFT with a confidence level of 72.0. Warren Buffett's focus on downside protection and business fundamentals was compelling, particularly his emphasis on the -89...."
     },
     {
       "ticker": "GOOGL",
       "current_weight": 6.0,
-      "suggested_weight": 1.92,
-      "weight_change": -4.08,
-      "percentage_change": -68.0,
-      "action": "sell",
-      "signal": "bearish",
-      "confidence": 85.0,
-      "reasoning": "Both Warren Buffett and Cathie Wood expressed bearish views on GOOGL, albeit from different angles. Buffett's concerns centered on the company's overvaluation and lack of a robust competitive moat, wh..."
+      "suggested_weight": 6.0,
+      "weight_change": 0.0,
+      "percentage_change": 0.0,
+      "action": "hold",
+      "signal": "neutral",
+      "confidence": 72.0,
+      "reasoning": "The consensus decision for GOOGL is neutral, reflecting a balanced consideration of both Warren Buffett's bearish view due to overvaluation and Cathie Wood's bullish outlook based on long-term growth ..."
     },
     {
       "ticker": "TSLA",
@@ -45,8 +45,8 @@
       "percentage_change": 0.0,
       "action": "hold",
       "signal": "neutral",
-      "confidence": 75.0,
-      "reasoning": "In synthesizing the perspectives of Warren Buffett and Cathie Wood, we recognize the compelling arguments from both sides. Buffett's emphasis on valuation and downside protection is critical, especial..."
+      "confidence": 78.0,
+      "reasoning": "The consensus decision is neutral, reflecting a balanced view between Warren Buffett's bearish stance due to TSLA's overvaluation and Cathie Wood's bullish outlook based on its disruptive innovation a..."
     },
     {
       "ticker": "NVDA",
@@ -57,7 +57,7 @@
       "action": "hold",
       "signal": "neutral",
       "confidence": 75.0,
-      "reasoning": "In synthesizing the perspectives of Warren Buffett and Cathie Wood on NVIDIA (NVDA), we recognize the compelling arguments from both sides. Buffett's emphasis on valuation and downside protection is c..."
+      "reasoning": "The consensus decision for NVDA is neutral, reflecting a balanced view that incorporates both Warren Buffett's concerns about valuation and Cathie Wood's optimism about long-term growth potential. Buf..."
     },
     {
       "ticker": "CASH",
@@ -72,8 +72,8 @@
     }
   ],
   "portfolio_summary": {
-    "overall_signal": "bearish",
-    "weighted_confidence": 75.6,
-    "total_weight_changes": 4.08
+    "overall_signal": "bullish",
+    "weighted_confidence": 77.0,
+    "total_weight_changes": 0.43
   }
 }

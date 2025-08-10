@@ -33,7 +33,12 @@ def get_llm_client(provider: str = None, model: str = None):
             temperature=0.1
         )
     elif provider == "cerebras":
-        
+        return ChatOpenAI(
+            base_url="https://api.cerebras.ai/v1",
+            model=model,
+            api_key=os.getenv("CEREBRAS_API_KEY"),
+            temperature=0.1
+        )
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
