@@ -1,0 +1,33 @@
+# AI Investment Agents - Requirements
+# Core LangChain dependencies
+langchain-core>=0.1.0
+langchain-openai>=0.1.0
+langchain-anthropic>=0.1.0
+
+# Pydantic for data validation
+pydantic>=2.0.0
+
+# Rich for beautiful terminal output
+rich>=13.0.0
+
+# Environment variables management
+python-dotenv>=1.0.0
+
+# HTTP client for API calls
+httpx>=0.25.0
+
+# Type hints support
+typing-extensions>=4.8.0
+
+# Standard library dependencies (included with Python)
+# json - built-in
+# sys - built-in  
+# os - built-in
+# datetime - built-in
+# concurrent.futures - built-in (Python 3.2+)
+# dataclasses - built-in (Python 3.7+)
+
+# Optional: For development and testing
+# pytest>=7.0.0
+# black>=23.0.0
+# flake8>=6.0.0

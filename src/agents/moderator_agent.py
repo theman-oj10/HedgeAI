@@ -7,8 +7,16 @@ from langchain_core.prompts import ChatPromptTemplate
 import json
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import call_llm
+# Add parent directory to path for utils import (portable approach)
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from utils import call_llm
+except ImportError:
+    # Fallback for when running as module
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from utils import call_llm
 
 
 class DebatePoint(BaseModel):
