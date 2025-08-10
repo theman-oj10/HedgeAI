@@ -481,17 +481,27 @@ class PortfolioDebateBacktester:
 def main():
     """Main CLI interface for portfolio backtesting with debate system"""
     
-    if len(sys.argv) < 4:
+    # Calculate default dates (1 year ago to today)
+    today = datetime.now()
+    one_year_ago = today - relativedelta(years=1)
+    default_start = one_year_ago.strftime("%Y-%m-%d")
+    default_end = today.strftime("%Y-%m-%d")
+    
+    if len(sys.argv) < 2:
         print(f"{Fore.RED}Usage:{Style.RESET_ALL}")
-        print("python src/portfolio_backtester.py <portfolio_name> <start_date> <end_date> [initial_capital]")
+        print("python src/portfolio_backtester.py <portfolio_name> [start_date] [end_date] [initial_capital]")
         print("\nExample:")
-        print("python src/portfolio_backtester.py tech_growth 2024-01-01 2024-12-31 100000")
+        print("python src/portfolio_backtester.py tech_growth")
+        print(f"python src/portfolio_backtester.py tech_growth {default_start} {default_end} 100000")
         print("\nAvailable portfolios: tech_growth, value_dividend, balanced_mix, ai_innovation")
+        print(f"\nDefault period: {default_start} to {default_end} (1 year)")
+        print("Default capital: $100,000")
+        print("Default rebalancing: Quarterly")
         return
     
     portfolio_name = sys.argv[1].lower()
-    start_date = sys.argv[2]
-    end_date = sys.argv[3]
+    start_date = sys.argv[2] if len(sys.argv) > 2 else default_start
+    end_date = sys.argv[3] if len(sys.argv) > 3 else default_end
     initial_capital = float(sys.argv[4]) if len(sys.argv) > 4 else 100000.0
     
     # Get portfolio
@@ -504,6 +514,11 @@ def main():
     
     try:
         # Create and run backtester
+        print(f"\n{Fore.CYAN}Backtest Configuration:{Style.RESET_ALL}")
+        print(f"Period: {start_date} to {end_date}")
+        print(f"Initial Capital: ${initial_capital:,.2f}")
+        print(f"Rebalancing: Quarterly (every 3 months)")
+        
         backtester = PortfolioDebateBacktester(
             portfolio=portfolio,
             start_date=start_date,

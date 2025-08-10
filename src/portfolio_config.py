@@ -4,9 +4,10 @@ Portfolio Configuration Module
 Defines portfolio structures and management for investment analysis.
 """
 
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field, validator
 from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field, validator
 
 
 class PortfolioHolding(BaseModel):
@@ -58,10 +59,10 @@ SAMPLE_PORTFOLIOS = {
             PortfolioHolding(ticker="AAPL", weight=0.02),
             PortfolioHolding(ticker="MSFT", weight=0.02),
             PortfolioHolding(ticker="GOOGL", weight=0.06),
-            PortfolioHolding(ticker="TSLA", weight=0.70),
-            PortfolioHolding(ticker="NVDA", weight=0.10),
+            PortfolioHolding(ticker="TSLA", weight=0.90),
+            PortfolioHolding(ticker="NVDA", weight=0.0),
         ],
-        cash_weight=0.10
+        cash_weight=0.0
     ),
     
     "value_dividend": Portfolio(
