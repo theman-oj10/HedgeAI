@@ -1,5 +1,6 @@
 # Environment variables (contains API keys)
 .env
+hedge_ai/trading_actions_quarterly_tech_growth_portfolio.json
 
 # Python
 __pycache__/
