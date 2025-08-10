@@ -7,7 +7,7 @@ Conducts investment debates for entire portfolios with weighted analysis.
 
 import sys
 import json
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from portfolio_config import Portfolio, PortfolioHolding, SAMPLE_PORTFOLIOS, create_custom_portfolio
 from consensus_debate import AgentDebateSystem
 from agents.moderator_agent import ConsensusDecision
+from quarterly_data_extractor import QuarterlyDataExtractor, QuarterlyPortfolioContext
 
 # Load environment variables
 load_dotenv()
@@ -190,6 +191,7 @@ class PortfolioDebateSystem:
     
     def __init__(self):
         self.debate_system = AgentDebateSystem()
+        self.quarterly_extractor = QuarterlyDataExtractor()
     
     def analyze_portfolio(self, portfolio: Portfolio, end_date: str = "2024-12-31", parallel: bool = True) -> PortfolioDebateResult:
         """Conduct debates for all holdings in a portfolio"""
@@ -212,6 +214,57 @@ class PortfolioDebateSystem:
         
         # Display portfolio-level results
         self._display_portfolio_results(result)
+        
+        # Generate and display JSON trading actions
+        json_output = self.generate_trading_actions_json(result)
+        console.print(f"\n[bold cyan]📄 JSON Trading Actions Output:[/bold cyan]")
+        console.print(json_output)
+        
+        return result, json_output
+
+    def analyze_portfolio_quarterly(self, portfolio: Portfolio, reference_date: str = None, parallel: bool = True) -> Tuple[PortfolioDebateResult, str]:
+        """
+        Conduct quarterly portfolio debates with historical data context
+        
+        Args:
+            portfolio: Portfolio to analyze
+            reference_date: Reference date for quarter calculation (defaults to today)
+            parallel: Whether to run analysis in parallel
+            
+        Returns:
+            Tuple of (PortfolioDebateResult, json_output)
+        """
+        console.print(f"\n[bold blue]📊 QUARTERLY Portfolio Analysis: {portfolio.name}[/bold blue]")
+        console.print("=" * 80)
+        
+        # Extract quarterly context
+        console.print("[bold cyan]📈 Extracting quarterly performance data...[/bold cyan]")
+        tickers = [holding.ticker for holding in portfolio.holdings]
+        quarterly_context = self.quarterly_extractor.extract_quarterly_context(tickers, reference_date)
+        
+        # Display quarterly summary
+        quarterly_summary = self.quarterly_extractor.format_quarterly_summary(quarterly_context)
+        console.print(Panel(
+            quarterly_summary,
+            title="📊 Quarterly Performance Context",
+            border_style="cyan"
+        ))
+        
+        # Display current portfolio composition
+        self._display_portfolio_composition(portfolio)
+        
+        result = PortfolioDebateResult(portfolio)
+        
+        # Add quarterly context to the debate system
+        if parallel and len(portfolio.holdings) > 1:
+            console.print(f"\n[bold cyan]🚀 Running quarterly-informed parallel analysis for {len(portfolio.holdings)} holdings...[/bold cyan]")
+            result = self._analyze_portfolio_parallel_with_quarterly_data(portfolio, quarterly_context, result)
+        else:
+            console.print(f"\n[bold cyan]🔄 Running quarterly-informed sequential analysis for {len(portfolio.holdings)} holdings...[/bold cyan]")
+            result = self._analyze_portfolio_sequential_with_quarterly_data(portfolio, quarterly_context, result)
+        
+        # Display portfolio-level results with quarterly context
+        self._display_quarterly_portfolio_results(result, quarterly_context)
         
         # Generate and display JSON trading actions
         json_output = self.generate_trading_actions_json(result)
@@ -255,6 +308,158 @@ class PortfolioDebateSystem:
                 continue
         
         return result
+
+    def _analyze_portfolio_sequential_with_quarterly_data(self, portfolio: Portfolio, quarterly_context: QuarterlyPortfolioContext, result: PortfolioDebateResult) -> PortfolioDebateResult:
+        """Analyze portfolio holdings sequentially with quarterly data context"""
+        
+        # Conduct individual stock debates with quarterly context
+        for i, holding in enumerate(portfolio.holdings, 1):
+            console.print(f"\n[bold yellow]📊 Analyzing {holding.ticker} ({holding.weight:.1%} allocation) with Q data[/bold yellow]")
+            console.print(f"[dim]Stock {i} of {len(portfolio.holdings)}[/dim]")
+            
+            try:
+                # Get quarterly performance for this stock
+                quarterly_perf = quarterly_context.individual_performance.get(holding.ticker)
+                
+                # Prepare enhanced portfolio context with quarterly data
+                portfolio_context = {
+                    "portfolio_name": portfolio.name,
+                    "total_holdings": len(portfolio.holdings),
+                    "cash_allocation": portfolio.cash_weight,
+                    "other_holdings": [
+                        {"ticker": h.ticker, "weight": h.weight} 
+                        for h in portfolio.holdings if h.ticker != holding.ticker
+                    ],
+                    "quarterly_context": {
+                        "quarter_period": f"{quarterly_context.quarter_start} to {quarterly_context.quarter_end}",
+                        "portfolio_return": quarterly_context.portfolio_return,
+                        "market_benchmarks": quarterly_context.market_context,
+                        "stock_performance": {
+                            "quarterly_return": quarterly_perf.quarterly_return if quarterly_perf else 0.0,
+                            "volatility": quarterly_perf.volatility if quarterly_perf else 0.0,
+                            "max_drawdown": quarterly_perf.max_drawdown if quarterly_perf else 0.0,
+                            "news_sentiment": quarterly_perf.positive_news_ratio if quarterly_perf else 0.0,
+                            "insider_activity": quarterly_perf.net_insider_buying if quarterly_perf else 0.0,
+                            "major_events": quarterly_perf.major_events if quarterly_perf else []
+                        }
+                    }
+                }
+                
+                stock_result = self.debate_system.conduct_debate(
+                    holding.ticker, 
+                    quarterly_context.quarter_end, 
+                    current_weight=holding.weight,
+                    portfolio_context=portfolio_context
+                )
+                result.add_stock_result(holding.ticker, stock_result)
+                
+                console.print(f"[green]✅ {holding.ticker} quarterly analysis complete[/green]")
+                
+            except Exception as e:
+                console.print(f"[red]❌ Error analyzing {holding.ticker}: {str(e)}[/red]")
+                continue
+        
+        return result
+
+    def _analyze_portfolio_parallel_with_quarterly_data(self, portfolio: Portfolio, quarterly_context: QuarterlyPortfolioContext, result: PortfolioDebateResult) -> PortfolioDebateResult:
+        """Analyze portfolio holdings in parallel with quarterly data context"""
+        
+        # First, run initial analysis in parallel
+        initial_results = self._run_parallel_initial_analysis_with_quarterly_data(portfolio, quarterly_context)
+        
+        # Then conduct debates sequentially (debates require sequential processing)
+        for i, holding in enumerate(portfolio.holdings, 1):
+            console.print(f"\n[bold yellow]🎭 Conducting quarterly debate for {holding.ticker} ({holding.weight:.1%})[/bold yellow]")
+            console.print(f"[dim]Debate {i} of {len(portfolio.holdings)}[/dim]")
+            
+            try:
+                # Get quarterly performance for this stock
+                quarterly_perf = quarterly_context.individual_performance.get(holding.ticker)
+                
+                # Enhanced portfolio context with quarterly data
+                portfolio_context = {
+                    "portfolio_name": portfolio.name,
+                    "total_holdings": len(portfolio.holdings),
+                    "cash_allocation": portfolio.cash_weight,
+                    "other_holdings": [
+                        {"ticker": h.ticker, "weight": h.weight} 
+                        for h in portfolio.holdings if h.ticker != holding.ticker
+                    ],
+                    "quarterly_context": {
+                        "quarter_period": f"{quarterly_context.quarter_start} to {quarterly_context.quarter_end}",
+                        "portfolio_return": quarterly_context.portfolio_return,
+                        "market_benchmarks": quarterly_context.market_context,
+                        "stock_performance": {
+                            "quarterly_return": quarterly_perf.quarterly_return if quarterly_perf else 0.0,
+                            "volatility": quarterly_perf.volatility if quarterly_perf else 0.0,
+                            "max_drawdown": quarterly_perf.max_drawdown if quarterly_perf else 0.0,
+                            "news_sentiment": quarterly_perf.positive_news_ratio if quarterly_perf else 0.0,
+                            "insider_activity": quarterly_perf.net_insider_buying if quarterly_perf else 0.0,
+                            "major_events": quarterly_perf.major_events if quarterly_perf else []
+                        }
+                    },
+                    "initial_analysis": initial_results.get(holding.ticker, {})
+                }
+                
+                stock_result = self.debate_system.conduct_debate(
+                    holding.ticker,
+                    quarterly_context.quarter_end,
+                    current_weight=holding.weight,
+                    portfolio_context=portfolio_context
+                )
+                result.add_stock_result(holding.ticker, stock_result)
+                
+                console.print(f"[green]✅ {holding.ticker} quarterly debate complete[/green]")
+                
+            except Exception as e:
+                console.print(f"[red]❌ Error in quarterly debate for {holding.ticker}: {str(e)}[/red]")
+                continue
+        
+        return result
+
+    def _run_parallel_initial_analysis_with_quarterly_data(self, portfolio: Portfolio, quarterly_context: QuarterlyPortfolioContext) -> Dict[str, Dict]:
+        """Run initial analysis for all stocks in parallel with quarterly context"""
+        
+        def analyze_stock_initial_with_quarterly(holding):
+            """Run initial analysis for a single stock with quarterly data"""
+            try:
+                quarterly_perf = quarterly_context.individual_performance.get(holding.ticker)
+                
+                # Enhanced context for initial analysis
+                context = {
+                    "ticker": holding.ticker,
+                    "current_weight": holding.weight,
+                    "quarterly_performance": {
+                        "return": quarterly_perf.quarterly_return if quarterly_perf else 0.0,
+                        "volatility": quarterly_perf.volatility if quarterly_perf else 0.0,
+                        "news_count": quarterly_perf.news_count if quarterly_perf else 0,
+                        "sentiment": quarterly_perf.positive_news_ratio if quarterly_perf else 0.0
+                    }
+                }
+                
+                # This would call the initial analysis with quarterly context
+                # For now, return the quarterly context as initial analysis
+                return holding.ticker, context
+                
+            except Exception as e:
+                console.print(f"[red]Error in initial analysis for {holding.ticker}: {e}[/red]")
+                return holding.ticker, {}
+        
+        console.print("[cyan]🔄 Running parallel initial analysis with quarterly data...[/cyan]")
+        
+        initial_results = {}
+        with ThreadPoolExecutor(max_workers=min(len(portfolio.holdings), 10)) as executor:
+            future_to_holding = {
+                executor.submit(analyze_stock_initial_with_quarterly, holding): holding 
+                for holding in portfolio.holdings
+            }
+            
+            for future in as_completed(future_to_holding):
+                ticker, analysis = future.result()
+                initial_results[ticker] = analysis
+                console.print(f"[green]✓[/green] Initial quarterly analysis complete for {ticker}")
+        
+        return initial_results
     
     def _analyze_portfolio_parallel(self, portfolio: Portfolio, end_date: str, result: PortfolioDebateResult) -> PortfolioDebateResult:
         """Analyze portfolio holdings with parallel initial analysis and sequential debates"""
@@ -473,8 +678,8 @@ class PortfolioDebateSystem:
     def _determine_action(self, weight_change: float, current_weight: float, suggested_weight: float) -> str:
         """Determine trading action based on weight changes"""
         
-        # Define thresholds
-        hold_threshold = 0.05  # 5% threshold for hold vs buy/sell
+        # Define thresholds - weight_change is in decimal form (e.g., 0.01 = 1%)
+        hold_threshold = 0.01  # 1% threshold for hold vs buy/sell
         
         if abs(weight_change) < hold_threshold:
             return "hold"
@@ -551,6 +756,90 @@ class PortfolioDebateSystem:
             table.add_row("CASH", f"{portfolio.cash_weight:.1%}", f"{portfolio.cash_weight:.3f}")
         
         console.print(table)
+    
+    def _display_quarterly_portfolio_results(self, result: PortfolioDebateResult, quarterly_context: QuarterlyPortfolioContext):
+        """Display comprehensive quarterly portfolio analysis results"""
+        
+        # Quarterly Performance Summary
+        quarterly_summary_table = Table(title="📊 Quarterly Performance vs Current Analysis")
+        quarterly_summary_table.add_column("Metric", style="cyan", no_wrap=True)
+        quarterly_summary_table.add_column("Quarterly Performance", style="blue")
+        quarterly_summary_table.add_column("Current Signal", style="bold")
+        
+        quarterly_summary_table.add_row(
+            "Portfolio Return",
+            f"{quarterly_context.portfolio_return:.2%}",
+            result.overall_signal.upper()
+        )
+        quarterly_summary_table.add_row(
+            "Portfolio Volatility", 
+            f"{quarterly_context.portfolio_volatility:.2%}",
+            f"{result.weighted_confidence:.1f}% confidence"
+        )
+        quarterly_summary_table.add_row(
+            "Sharpe Ratio",
+            f"{quarterly_context.portfolio_sharpe:.2f}",
+            f"Score: {result.portfolio_score:.2f}"
+        )
+        
+        console.print(quarterly_summary_table)
+        
+        # Market Context vs Portfolio
+        market_table = Table(title="📈 Market Context")
+        market_table.add_column("Benchmark", style="cyan")
+        market_table.add_column("Quarterly Return", style="blue")
+        market_table.add_column("vs Portfolio", style="bold")
+        
+        for benchmark, return_val in quarterly_context.market_context.items():
+            relative_performance = quarterly_context.portfolio_return - return_val
+            performance_indicator = "🟢" if relative_performance > 0 else "🔴"
+            market_table.add_row(
+                benchmark,
+                f"{return_val:.2%}",
+                f"{performance_indicator} {relative_performance:+.2%}"
+            )
+        
+        console.print(market_table)
+        
+        # Individual stock results with quarterly context
+        stock_table = Table(title="Individual Stock Analysis with Quarterly Context")
+        stock_table.add_column("Ticker", style="cyan", no_wrap=True)
+        stock_table.add_column("Q Return", style="blue")
+        stock_table.add_column("Q Vol", style="yellow")
+        stock_table.add_column("News", style="green")
+        stock_table.add_column("Signal", style="bold")
+        stock_table.add_column("Confidence", style="magenta")
+        
+        for holding in result.portfolio.holdings:
+            ticker = holding.ticker
+            quarterly_perf = quarterly_context.individual_performance.get(ticker)
+            
+            if ticker in result.individual_results and quarterly_perf:
+                stock_result = result.individual_results[ticker]
+                
+                # Color code the signal
+                signal_color = {
+                    "bullish": "green",
+                    "bearish": "red",
+                    "neutral": "yellow"
+                }.get(stock_result.signal.lower(), "white")
+                
+                # News sentiment indicator
+                news_indicator = "🟢" if quarterly_perf.positive_news_ratio > 0.6 else "🟡" if quarterly_perf.positive_news_ratio > 0.4 else "🔴"
+                
+                stock_table.add_row(
+                    ticker,
+                    f"{quarterly_perf.quarterly_return:.2%}",
+                    f"{quarterly_perf.volatility:.1%}",
+                    f"{news_indicator} {quarterly_perf.news_count}",
+                    f"[{signal_color}]{stock_result.signal.upper()}[/{signal_color}]",
+                    f"{stock_result.confidence:.1f}%"
+                )
+        
+        console.print(stock_table)
+        
+        # Display regular portfolio results as well
+        self._display_portfolio_results(result)
     
     def _display_portfolio_results(self, result: PortfolioDebateResult):
         """Display comprehensive portfolio analysis results"""
@@ -738,25 +1027,42 @@ def main():
         console.print("   Available portfolios: tech_growth, value_dividend, balanced_mix, ai_innovation")
         console.print("\n2. Create custom portfolio:")
         console.print("   python src/portfolio_debate.py custom AAPL:0.3 TSLA:0.4 NVDA:0.3")
+        console.print("\n3. Run quarterly analysis:")
+        console.print("   python src/portfolio_debate.py quarterly <portfolio_name>")
+        console.print("   python src/portfolio_debate.py quarterly custom AAPL:0.3 TSLA:0.4 NVDA:0.3")
         console.print("\nExamples:")
         console.print("   python src/portfolio_debate.py tech_growth")
+        console.print("   python src/portfolio_debate.py quarterly tech_growth")
         console.print("   python src/portfolio_debate.py custom AAPL:0.5 MSFT:0.3 GOOGL:0.2")
+        console.print("   python src/portfolio_debate.py quarterly custom AAPL:0.5 MSFT:0.3 GOOGL:0.2")
         return
     
     portfolio_system = PortfolioDebateSystem()
     
-    portfolio_name = sys.argv[1].lower()
+    # Check if quarterly analysis is requested
+    quarterly_mode = False
+    if sys.argv[1].lower() == "quarterly":
+        quarterly_mode = True
+        if len(sys.argv) < 3:
+            console.print("[red]Error: Quarterly mode requires portfolio name[/red]")
+            console.print("Example: python src/portfolio_debate.py quarterly tech_growth")
+            return
+        portfolio_name = sys.argv[2].lower()
+        remaining_args = sys.argv[3:]  # For custom portfolios
+    else:
+        portfolio_name = sys.argv[1].lower()
+        remaining_args = sys.argv[2:]  # For custom portfolios
     
     if portfolio_name == "custom":
         # Parse custom portfolio from command line
-        if len(sys.argv) < 3:
+        if len(remaining_args) < 1:
             console.print("[red]Error: Custom portfolio requires ticker:weight pairs[/red]")
             console.print("Example: python src/portfolio_debate.py custom AAPL:0.4 TSLA:0.6")
             return
         
         try:
             holdings_dict = {}
-            for arg in sys.argv[2:]:
+            for arg in remaining_args:
                 ticker, weight_str = arg.split(':')
                 holdings_dict[ticker.upper()] = float(weight_str)
             
@@ -782,13 +1088,20 @@ def main():
         return
     
     try:
-        # Conduct portfolio analysis
-        result, json_output = portfolio_system.analyze_portfolio(portfolio)
+        # Conduct portfolio analysis (quarterly or regular)
+        if quarterly_mode:
+            console.print(f"[bold cyan]📊 Running QUARTERLY analysis for {portfolio.name}[/bold cyan]")
+            result, json_output = portfolio_system.analyze_portfolio_quarterly(portfolio)
+            analysis_type = "quarterly"
+        else:
+            console.print(f"[bold cyan]📈 Running REGULAR analysis for {portfolio.name}[/bold cyan]")
+            result, json_output = portfolio_system.analyze_portfolio(portfolio)
+            analysis_type = "regular"
         
-        console.print(f"\n[bold green]✅ Portfolio analysis complete for {portfolio.name}![/bold green]")
+        console.print(f"\n[bold green]✅ {analysis_type.title()} portfolio analysis complete for {portfolio.name}![/bold green]")
         
         # Optionally save JSON output to file
-        json_filename = f"trading_actions_{portfolio.name.lower().replace(' ', '_')}.json"
+        json_filename = f"trading_actions_{analysis_type}_{portfolio.name.lower().replace(' ', '_')}.json"
         with open(json_filename, 'w') as f:
             f.write(json_output)
         console.print(f"[dim]💾 JSON output saved to {json_filename}[/dim]")
