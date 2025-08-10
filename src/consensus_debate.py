@@ -56,7 +56,7 @@ class AgentDebateSystem:
         self.moderator = ModeratorAgent()
         self.debate_history = []
     
-    def conduct_debate_with_initial_analyses(self, ticker: str, buffett_initial, wood_initial, end_date: str = "2024-12-31", current_weight: float = None, portfolio_context: dict = None) -> 'DebateResult':
+    def conduct_debate_with_initial_analyses(self, ticker: str, buffett_initial, wood_initial, end_date: str = "2024-12-31", current_weight: float = None, portfolio_context: dict = None) -> ConsensusDecision:
         """Conduct debate using pre-computed initial analyses (for parallel optimization)"""
         
         console = Console()
@@ -109,7 +109,7 @@ class AgentDebateSystem:
         
         self._display_consensus(ticker, final_decision)
         
-        # Create result object
+        # Create result object (for internal tracking if needed)
         result = DebateResult(
             ticker=ticker,
             buffett_initial=buffett_initial,
@@ -121,7 +121,8 @@ class AgentDebateSystem:
             final_decision=final_decision
         )
         
-        return result
+        # Return the ConsensusDecision which has the signal attribute
+        return final_decision
     
     def conduct_batch_debate(self, tickers: List[str], end_date: str = "2024-12-31") -> Dict[str, 'DebateResult']:
         """Conduct batch debates for multiple tickers"""

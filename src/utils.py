@@ -1,13 +1,14 @@
 """
 Simplified utilities for investment agents
 """
-import os
 import json
+import os
+from typing import Any, Dict, List, Optional
+
 import httpx
-from typing import Dict, Any, Optional, List
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 # Load environment variables
@@ -31,6 +32,8 @@ def get_llm_client(provider: str = None, model: str = None):
             api_key=os.getenv("ANTHROPIC_API_KEY"),
             temperature=0.1
         )
+    elif provider == "cerebras":
+        
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
