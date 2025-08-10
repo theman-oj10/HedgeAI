@@ -6,7 +6,9 @@ Conducts investment debates for entire portfolios with weighted analysis.
 """
 
 import sys
+import json
 from typing import Dict, List
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rich.console import Console
 from rich.table import Table
@@ -35,6 +37,7 @@ class PortfolioDebateResult:
         self.rebalancing_suggestions: List[str] = []
         self.suggested_weights: Dict[str, float] = {}
         self.rebalanced_portfolio: Portfolio = None
+        self.timestamp = datetime.now()  # Add timestamp for JSON output
     
     def add_stock_result(self, ticker: str, result: ConsensusDecision):
         """Add individual stock debate result"""
@@ -210,7 +213,12 @@ class PortfolioDebateSystem:
         # Display portfolio-level results
         self._display_portfolio_results(result)
         
-        return result
+        # Generate and display JSON trading actions
+        json_output = self.generate_trading_actions_json(result)
+        console.print(f"\n[bold cyan]📄 JSON Trading Actions Output:[/bold cyan]")
+        console.print(json_output)
+        
+        return result, json_output
     
     def _analyze_portfolio_sequential(self, portfolio: Portfolio, end_date: str, result: PortfolioDebateResult) -> PortfolioDebateResult:
         """Analyze portfolio holdings sequentially (original method)"""
@@ -361,6 +369,169 @@ class PortfolioDebateSystem:
         
         console.print(f"[bold green]🎉 Initial analysis complete for {len(initial_analyses)}/{len(portfolio.holdings)} holdings[/bold green]")
         return initial_analyses
+    
+    def generate_trading_actions_json(self, result: PortfolioDebateResult) -> str:
+        """Generate JSON output with percentage changes and trading actions for each stock"""
+        
+        trading_actions = []
+        
+        for ticker, consensus in result.individual_results.items():
+            # Find the holding in the original portfolio
+            holding = None
+            for h in result.portfolio.holdings:
+                if h.ticker == ticker:
+                    holding = h
+                    break
+            
+            if not holding:
+                continue
+                
+            current_weight = holding.weight
+            
+            # Calculate suggested new weight based on consensus
+            suggested_weight = self._calculate_suggested_weight(
+                current_weight, consensus.signal, consensus.confidence
+            )
+            
+            # Calculate percentage change
+            weight_change = suggested_weight - current_weight
+            percentage_change = (weight_change / current_weight * 100) if current_weight > 0 else 0
+            
+            # Determine action
+            action = self._determine_action(weight_change, current_weight, suggested_weight)
+            
+            trading_action = {
+                "ticker": ticker,
+                "current_weight": round(current_weight * 100, 2),  # Convert to percentage
+                "suggested_weight": round(suggested_weight * 100, 2),  # Convert to percentage
+                "weight_change": round(weight_change * 100, 2),  # Convert to percentage
+                "percentage_change": round(percentage_change, 2),
+                "action": action,
+                "signal": consensus.signal,
+                "confidence": round(consensus.confidence, 1),
+                "reasoning": consensus.reasoning[:200] + "..." if len(consensus.reasoning) > 200 else consensus.reasoning
+            }
+            
+            trading_actions.append(trading_action)
+        
+        # Add cash allocation info
+        cash_info = {
+            "ticker": "CASH",
+            "current_weight": round((1.0 - sum(h.weight for h in result.portfolio.holdings)) * 100, 2),
+            "suggested_weight": 10.0,  # Fixed 10% cash allocation
+            "weight_change": 0.0,
+            "percentage_change": 0.0,
+            "action": "hold",
+            "signal": "neutral",
+            "confidence": 100.0,
+            "reasoning": "Fixed cash allocation maintained at 10%"
+        }
+        
+        trading_actions.append(cash_info)
+        
+        # Create summary
+        output = {
+            "portfolio_name": result.portfolio.name,
+            "analysis_timestamp": result.timestamp.isoformat(),
+            "total_holdings": len(result.portfolio.holdings),
+            "rebalancing_recommended": any(abs(action["weight_change"]) > 5.0 for action in trading_actions if action["ticker"] != "CASH"),
+            "trading_actions": trading_actions,
+            "portfolio_summary": {
+                "overall_signal": self._calculate_portfolio_signal(result),
+                "weighted_confidence": self._calculate_weighted_confidence(result),
+                "total_weight_changes": sum(abs(action["weight_change"]) for action in trading_actions if action["ticker"] != "CASH")
+            }
+        }
+        
+        return json.dumps(output, indent=2)
+    
+    def _calculate_suggested_weight(self, current_weight: float, signal: str, confidence: float) -> float:
+        """Calculate suggested weight based on consensus signal and confidence"""
+        
+        # Base adjustment factor based on signal
+        if signal == "bullish":
+            base_adjustment = 0.3  # Up to 30% increase
+        elif signal == "bearish":
+            base_adjustment = -0.8  # Up to 80% decrease (minimum 1%)
+        else:  # neutral
+            base_adjustment = 0.0  # No change
+        
+        # Scale by confidence (0-100 -> 0-1)
+        confidence_factor = confidence / 100.0
+        
+        # Calculate adjustment
+        adjustment = base_adjustment * confidence_factor
+        
+        # Apply adjustment
+        suggested_weight = current_weight * (1 + adjustment)
+        
+        # Apply constraints
+        suggested_weight = max(0.01, min(0.7, suggested_weight))  # Between 1% and 70%
+        
+        return suggested_weight
+    
+    def _determine_action(self, weight_change: float, current_weight: float, suggested_weight: float) -> str:
+        """Determine trading action based on weight changes"""
+        
+        # Define thresholds
+        hold_threshold = 0.05  # 5% threshold for hold vs buy/sell
+        
+        if abs(weight_change) < hold_threshold:
+            return "hold"
+        elif weight_change > 0:
+            return "buy"
+        else:
+            return "sell"
+    
+    def _calculate_portfolio_signal(self, result: PortfolioDebateResult) -> str:
+        """Calculate overall portfolio signal"""
+        
+        bullish_weight = 0
+        bearish_weight = 0
+        
+        for ticker, consensus in result.individual_results.items():
+            # Find holding weight
+            holding_weight = 0
+            for h in result.portfolio.holdings:
+                if h.ticker == ticker:
+                    holding_weight = h.weight
+                    break
+            
+            signal = consensus.signal
+            confidence = consensus.confidence / 100.0
+            weighted_signal = holding_weight * confidence
+            
+            if signal == "bullish":
+                bullish_weight += weighted_signal
+            elif signal == "bearish":
+                bearish_weight += weighted_signal
+        
+        if bullish_weight > bearish_weight * 1.2:
+            return "bullish"
+        elif bearish_weight > bullish_weight * 1.2:
+            return "bearish"
+        else:
+            return "neutral"
+    
+    def _calculate_weighted_confidence(self, result: PortfolioDebateResult) -> float:
+        """Calculate portfolio-weighted confidence"""
+        
+        total_weighted_confidence = 0
+        total_weight = 0
+        
+        for ticker, consensus in result.individual_results.items():
+            # Find holding weight
+            holding_weight = 0
+            for h in result.portfolio.holdings:
+                if h.ticker == ticker:
+                    holding_weight = h.weight
+                    break
+            
+            confidence = consensus.confidence
+            total_weighted_confidence += holding_weight * confidence
+            total_weight += holding_weight
+        
+        return round(total_weighted_confidence / total_weight if total_weight > 0 else 0, 1)
     
     def _display_portfolio_composition(self, portfolio: Portfolio):
         """Display portfolio composition table"""
@@ -612,9 +783,15 @@ def main():
     
     try:
         # Conduct portfolio analysis
-        result = portfolio_system.analyze_portfolio(portfolio)
+        result, json_output = portfolio_system.analyze_portfolio(portfolio)
         
         console.print(f"\n[bold green]✅ Portfolio analysis complete for {portfolio.name}![/bold green]")
+        
+        # Optionally save JSON output to file
+        json_filename = f"trading_actions_{portfolio.name.lower().replace(' ', '_')}.json"
+        with open(json_filename, 'w') as f:
+            f.write(json_output)
+        console.print(f"[dim]💾 JSON output saved to {json_filename}[/dim]")
         
     except KeyboardInterrupt:
         console.print("\n[yellow]Analysis interrupted by user[/yellow]")

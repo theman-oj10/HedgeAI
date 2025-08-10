@@ -1,0 +1,35 @@
+{
+  "portfolio_name": "Custom Portfolio",
+  "analysis_timestamp": "2025-08-10T15:08:31.881969",
+  "total_holdings": 1,
+  "rebalancing_recommended": true,
+  "trading_actions": [
+    {
+      "ticker": "AAPL",
+      "current_weight": 100.0,
+      "suggested_weight": 70.0,
+      "weight_change": -30.0,
+      "percentage_change": -30.0,
+      "action": "sell",
+      "signal": "neutral",
+      "confidence": 70.0,
+      "reasoning": "In synthesizing the views of Warren Buffett and Cathie Wood regarding Apple Inc. (AAPL), we find a middle ground that acknowledges the strengths and weaknesses highlighted by both investors. Buffett's..."
+    },
+    {
+      "ticker": "CASH",
+      "current_weight": 0.0,
+      "suggested_weight": 10.0,
+      "weight_change": 0.0,
+      "percentage_change": 0.0,
+      "action": "hold",
+      "signal": "neutral",
+      "confidence": 100.0,
+      "reasoning": "Fixed cash allocation maintained at 10%"
+    }
+  ],
+  "portfolio_summary": {
+    "overall_signal": "neutral",
+    "weighted_confidence": 70.0,
+    "total_weight_changes": 30.0
+  }
+}
