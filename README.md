@@ -64,8 +64,6 @@ Every quarter, the AI Board convenes for comprehensive portfolio reviews:
 ## 📈 Performance Results
 
 Our AI hedge fund has demonstrated strong performance in backtesting:
-- **Outperformed SPY** - Beat the S&P 500 benchmark over the 2022-2025 period
+- **Outperformed SPY** - Beat the S&P 500 benchmark over the 2022-2025 period by over 150% 
 - **Risk Management** - Maintained disciplined position sizing and diversification
 - **Market Adaptability** - Successfully navigated different market conditions and volatility regimes
-
-By using this software, you agree to use it solely for learning purposes.
