@@ -19,8 +19,6 @@ Our AI hedge fund creates a virtual boardroom where legendary investor personali
 - **Valuation Agent** - Intrinsic value calculations and DCF modeling
 - **Sentiment Agent** - Market sentiment and news analysis
 - **Fundamentals Agent** - Financial statement and ratio analysis
-- **Technical Agent** - Chart patterns and technical indicators
-- **Risk Manager** - Portfolio risk assessment and position sizing
 
 ### 🔧 Professional-Grade Tools
 
@@ -29,8 +27,6 @@ Each agent is equipped with institutional-quality analysis tools:
 - **📊 Fundamental Analysis** - Company performance evaluation, financial health assessment, and valuation modeling
 - **📰 Market News & Sentiment** - Real-time news analysis, social media sentiment, and market mood indicators  
 - **🌍 Macroeconomic Indicators** - Economic trends, interest rates, inflation data, and sector rotation analysis
-- **📈 Technical Analysis** - Chart patterns, momentum indicators, and trend analysis
-- **⚖️ Risk Management** - Position sizing, portfolio diversification, and risk-adjusted returns
 
 ## 🏛️ The AI Board of Directors
 
