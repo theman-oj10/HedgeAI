@@ -435,6 +435,9 @@ class PortfolioDebateBacktester:
                     "Positions Value": positions_value
                 })
                 
+                # Save iteration data
+                self._save_iteration_data(current_date, current_prices, executed_trades)
+                
                 # Display summary for this period
                 print(f"\n{Fore.GREEN}Period Summary:{Style.RESET_ALL}")
                 print(f"Portfolio Value: ${portfolio_value:,.2f}")
@@ -449,8 +452,8 @@ class PortfolioDebateBacktester:
         # Calculate final performance metrics
         self._calculate_performance_metrics(performance_metrics, initial_sp500_price)
         
-        # Save backtest results to file
-        self._save_backtest_results(performance_metrics)
+        # Save final summary
+        self._save_final_summary(performance_metrics)
         
         return performance_metrics
     
@@ -492,26 +495,21 @@ class PortfolioDebateBacktester:
         drawdown = (values_df["Portfolio Value"] - rolling_max) / rolling_max
         metrics["max_drawdown"] = drawdown.min() * 100
     
-    def _save_backtest_results(self, performance_metrics: Dict):
-        """Save backtest results to file for dashboard consumption"""
+    def _save_iteration_data(self, current_date, current_prices: Dict, executed_trades: Dict):
+        """Save data for current iteration to file for dashboard consumption"""
         
-        # Prepare data for saving
-        backtest_data = {
+        # Calculate current portfolio value
+        portfolio_value = self.calculate_portfolio_value(current_prices)
+        
+        # Prepare iteration data
+        iteration_data = {
             "session_id": self.session_id,
             "portfolio_name": self.portfolio.name,
             "timestamp": datetime.now().isoformat(),
-            "config": {
-                "start_date": self.start_date,
-                "end_date": self.end_date,
-                "initial_capital": self.initial_capital,
-                "trading_frequency": self.trading_frequency,
-                "rebalance_threshold": self.rebalance_threshold
-            },
-            "performance_metrics": performance_metrics,
-            "portfolio_values": self.portfolio_values,
-            "sp500_values": self.sp500_values,
-            "trades_history": self.trades_history,
-            "final_positions": {
+            "iteration_date": current_date.isoformat(),
+            "portfolio_value": portfolio_value,
+            "cash": self.cash,
+            "positions": {
                 ticker: {
                     "shares": position["shares"],
                     "cost_basis": position["cost_basis"],
@@ -519,22 +517,45 @@ class PortfolioDebateBacktester:
                 }
                 for ticker, position in self.current_positions.items()
             },
-            "final_cash": self.cash
+            "executed_trades": executed_trades,
+            "current_prices": current_prices
         }
         
-        # Convert dates to strings for JSON serialization
-        for portfolio_val in backtest_data["portfolio_values"]:
-            portfolio_val["Date"] = portfolio_val["Date"].isoformat()
+        # Load or create consolidated file
+        consolidated_file = os.path.join(self.output_dir, "backtest_data.json")
         
-        for sp500_val in backtest_data["sp500_values"]:
-            sp500_val["Date"] = sp500_val["Date"].isoformat()
+        existing_data = {"iterations": [], "metadata": {}}
+        if os.path.exists(consolidated_file):
+            try:
+                with open(consolidated_file, 'r') as f:
+                    existing_data = json.load(f)
+                    if "iterations" not in existing_data:
+                        existing_data["iterations"] = []
+            except (json.JSONDecodeError, FileNotFoundError):
+                existing_data = {"iterations": [], "metadata": {}}
         
-        # Save to individual session file
-        session_file = os.path.join(self.output_dir, f"{self.session_id}.json")
-        with open(session_file, 'w') as f:
-            json.dump(backtest_data, f, indent=2, default=str)
+        # Update metadata
+        existing_data["metadata"] = {
+            "last_updated": datetime.now().isoformat(),
+            "portfolio_name": self.portfolio.name,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "initial_capital": self.initial_capital,
+            "trading_frequency": self.trading_frequency,
+            "current_session_id": self.session_id
+        }
         
-        print(f"\n{Fore.GREEN}Backtest results saved to: {session_file}{Style.RESET_ALL}")
+        # Add iteration data
+        existing_data["iterations"].append(iteration_data)
+        
+        # Save consolidated data
+        with open(consolidated_file, 'w') as f:
+            json.dump(existing_data, f, indent=2, default=str)
+        
+        print(f"  💾 Data saved for {current_date.strftime('%Y-%m-%d')}")
+    
+    def _save_final_summary(self, performance_metrics: Dict):
+        """Save final summary to separate files"""
         
         # Append summary to master log file
         master_log_file = os.path.join(self.output_dir, "backtest_master_log.jsonl")
@@ -561,6 +582,10 @@ class PortfolioDebateBacktester:
             f.write(json.dumps(summary_data, default=str) + '\n')
         
         print(f"Summary appended to: {master_log_file}")
+        
+        # Update consolidated file path message
+        consolidated_file = os.path.join(self.output_dir, "backtest_data.json")
+        print(f"All iteration data saved in: {consolidated_file}")
         
         # Save latest portfolio state for quick access
         latest_state_file = os.path.join(self.output_dir, "latest_portfolio_state.json")
