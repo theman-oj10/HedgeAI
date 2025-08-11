@@ -1,170 +1,305 @@
-## HedgeAI
+# 🤖 Hedge AI
 
-AI-powered investment research, portfolio debate, and backtesting toolkit. Two persona agents (Warren Buffett and Cathie Wood) debate each holding, a moderator synthesizes consensus, and a portfolio layer proposes rebalancing. Includes a Python backtester and a React dashboard for visualization.
+**A Personal AI Hedge Fund for Retail Investors**
 
-### Features
+We built an intelligent investment platform powered by AI agents modeled after legendary investors like Warren Buffett, Cathie Wood, and Michael Burry. This system democratizes institutional-grade investment analysis for retail investors through AI-driven debates and automated portfolio management.
 
-- **Agent analyses**: `WarrenBuffettAgent` and `CathieWoodAgent` generate signals, confidence, and reasoning.
-- **Moderated debates**: `ModeratorAgent` identifies disagreements, conducts cross-examination, and synthesizes a consensus.
-- **Portfolio engine**: Runs debates for each holding, computes suggested weights, and emits JSON trading actions.
-- **Backtesting**: Quarterly or daily simulation with trade execution and benchmark comparison (SPY).
-- **Dashboard**: React + Vite dashboard to visualize backtest iterations and portfolio state.
+## 🎯 Overview
 
-### Requirements
+Our AI hedge fund creates a virtual boardroom where legendary investor personalities debate investment decisions in real-time. Each agent brings their unique investment philosophy and analytical approach, while a Portfolio Manager agent orchestrates the discussions and synthesizes insights into actionable trading decisions.
 
-- Python 3.8+
-- Node 18+ (for the dashboard)
+### 🧠 AI Investment Agents
 
-Python dependencies are listed in `requirements.txt`. The backtester also requires:
+**Legendary Investor Personalities:**
+- **Warren Buffett Agent** - The Oracle of Omaha: Value investing focused on wonderful companies at fair prices
+- **Cathie Wood Agent** - Innovation Catalyst: Growth investing in disruptive technologies and exponential trends  
+- **Michael Burry Agent** - The Contrarian: Deep value hunting with contrarian market insights
 
-- `matplotlib`
-- `colorama`
+**Specialized Analysis Agents:**
+- **Valuation Agent** - Intrinsic value calculations and DCF modeling
+- **Sentiment Agent** - Market sentiment and news analysis
+- **Fundamentals Agent** - Financial statement and ratio analysis
+- **Technical Agent** - Chart patterns and technical indicators
+- **Risk Manager** - Portfolio risk assessment and position sizing
 
-Install them if missing:
+### 🔧 Professional-Grade Tools
+
+Each agent is equipped with institutional-quality analysis tools:
+
+- **📊 Fundamental Analysis** - Company performance evaluation, financial health assessment, and valuation modeling
+- **📰 Market News & Sentiment** - Real-time news analysis, social media sentiment, and market mood indicators  
+- **🌍 Macroeconomic Indicators** - Economic trends, interest rates, inflation data, and sector rotation analysis
+- **📈 Technical Analysis** - Chart patterns, momentum indicators, and trend analysis
+- **⚖️ Risk Management** - Position sizing, portfolio diversification, and risk-adjusted returns
+
+## 🏛️ The AI Board of Directors
+
+At the heart of our system is the **Portfolio Manager Agent** - acting as the moderator and decision-maker in every investment discussion. This agent:
+
+- **Orchestrates Debates** - Facilitates structured discussions between investor agents
+- **Synthesizes Insights** - Combines different investment perspectives into coherent strategies
+- **Makes Final Decisions** - Weighs all arguments and executes trades based on consensus
+- **Manages Risk** - Ensures portfolio balance and adherence to risk parameters
+
+### 📅 Quarterly Strategic Reviews
+
+Every quarter, the AI Board convenes for comprehensive portfolio reviews:
+- **Performance Evaluation** - Analyzing returns, risk metrics, and benchmark comparisons
+- **Market Reassessment** - Updating market outlook and identifying new opportunities
+- **Portfolio Rebalancing** - Optimizing asset allocation and position sizing
+- **Strategy Refinement** - Adapting investment approach based on market conditions
+
+## 🚀 Technology Stack
+
+**Development Tools:**
+- **Windsurf** - AI-powered development environment
+- **Claude Code** - Advanced code generation and debugging
+
+**AI Infrastructure:**
+- **OpenAI APIs** - GPT-4 for sophisticated reasoning and analysis
+- **Cerebras APIs** - High-performance inference for scalable processing
+- **Custom LLM Pipeline** - Optimized for financial analysis and decision-making
+
+**Backtesting Framework:**
+- **Custom Simulation Engine** - Historical performance testing from 2022-2025
+- **Risk-Adjusted Metrics** - Sharpe ratio, maximum drawdown, and volatility analysis
+- **Benchmark Comparison** - Performance vs SPY and other market indices
+
+## 📈 Performance Results
+
+Our AI hedge fund has demonstrated strong performance in backtesting:
+- **Outperformed SPY** - Beat the S&P 500 benchmark over the 2022-2025 period
+- **Risk Management** - Maintained disciplined position sizing and diversification
+- **Market Adaptability** - Successfully navigated different market conditions and volatility regimes
+
+<img width="1042" alt="AI Hedge Fund Dashboard" src="https://github.com/user-attachments/assets/cbae3dcf-b571-490d-b0ad-3f0f035ac0d4" />
+
+[![Twitter Follow](https://img.shields.io/twitter/follow/virattt?style=social)](https://twitter.com/virattt)
+
+## Disclaimer
+
+This project is for **educational and research purposes only**.
+
+- Not intended for real trading or investment
+- No investment advice or guarantees provided
+- Creator assumes no liability for financial losses
+- Consult a financial advisor for investment decisions
+- Past performance does not indicate future results
+
+By using this software, you agree to use it solely for learning purposes.
+
+## Table of Contents
+- [How to Install](#how-to-install)
+- [How to Run](#how-to-run)
+  - [⌨️ Command Line Interface](#️-command-line-interface)
+  - [🖥️ Web Application (NEW!)](#️-web-application)
+- [Contributing](#contributing)
+- [Feature Requests](#feature-requests)
+- [License](#license)
+
+## How to Install
+
+Before you can run the AI Hedge Fund, you'll need to install it and set up your API keys. These steps are common to both the full-stack web application and command line interface.
+
+
+
+### 2. Set Up Your API Keys
+
+Create a `.env` file for your API keys:
+```bash
+# Create .env file for your API keys (in the root directory)
+cp .env.example .env
+```
+
+Open and edit the `.env` file to add your API keys:
+```bash
+# For running LLMs hosted by openai (gpt-4o, gpt-4o-mini, etc.)
+OPENAI_API_KEY=your-openai-api-key
+
+# For running LLMs hosted by groq (deepseek, llama3, etc.)
+GROQ_API_KEY=your-groq-api-key
+
+# For getting financial data to power the hedge fund
+FINANCIAL_DATASETS_API_KEY=your-financial-datasets-api-key
+```
+
+**Important**: You must set at least one LLM API key (`OPENAI_API_KEY`, `GROQ_API_KEY`, `ANTHROPIC_API_KEY`, or `DEEPSEEK_API_KEY`) for the hedge fund to work. 
+
+**Financial Data**: Data for AAPL, GOOGL, MSFT, NVDA, and TSLA is free and does not require an API key. For any other ticker, you will need to set the `FINANCIAL_DATASETS_API_KEY` in the .env file.
+
+## How to Run
+
+### ⌨️ Command Line Interface
+
+For users who prefer working with command line tools, you can run the AI Hedge Fund directly via terminal. This approach offers more granular control and is useful for automation, scripting, and integration purposes.
+
+<img width="992" alt="Screenshot 2025-01-06 at 5 50 17 PM" src="https://github.com/user-attachments/assets/e8ca04bf-9989-4a7d-a8b4-34e04666663b" />
+
+Choose one of the following installation methods:
+
+```
+
+#### Running the AI Hedge Fund (with Poetry)
+```bash
+poetry run python src/main.py --ticker AAPL,MSFT,NVDA
+```
+
+#### Running the AI Hedge Fund (with Docker)
+```bash
+# Navigate to the docker directory first
+cd docker
+
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA main
+
+# On Windows:
+run.bat --ticker AAPL,MSFT,NVDA main
+```
+
+You can also specify a `--ollama` flag to run the AI hedge fund using local LLMs.
 
 ```bash
-pip install matplotlib colorama
+# With Poetry:
+poetry run python src/main.py --ticker AAPL,MSFT,NVDA --ollama
+
+# With Docker (from docker/ directory):
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA --ollama main
+
+# On Windows:
+run.bat --ticker AAPL,MSFT,NVDA --ollama main
 ```
 
-### Environment variables (.env)
-
-Create a `.env` file in the repo root with:
+You can also specify a `--show-reasoning` flag to print the reasoning of each agent to the console.
 
 ```bash
-# LLM providers
-OPENAI_API_KEY=your_openai_api_key   # required for real LLM calls
-ANTHROPIC_API_KEY=your_anthropic_key # optional
+# With Poetry:
+poetry run python src/main.py --ticker AAPL,MSFT,NVDA --show-reasoning
 
-# Defaults (optional)
-DEFAULT_LLM_PROVIDER=openai          # openai | anthropic | cerebras
-DEFAULT_MODEL=gpt-4o-mini            # any model your provider supports
+# With Docker (from docker/ directory):
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA --show-reasoning main
 
-# Financial data API (required for real backtesting/data fetches)
-FINANCIAL_DATASETS_API_KEY=your_financialdatasets_api_key
+# On Windows:
+run.bat --ticker AAPL, MSFT,NVDA --show-reasoning main
 ```
 
-Notes:
-
-- If LLM keys are missing or set to placeholders, the system runs in a deterministic "demo mode" with mock outputs for quick testing.
-- The backtester fetches prices, metrics, news, and insider trades via `https://api.financialdatasets.ai/` and needs `FINANCIAL_DATASETS_API_KEY` for reliable runs.
-
-### Setup
+You can optionally specify the start and end dates to make decisions for a specific time period.
 
 ```bash
-git clone <this-repo>
-cd HedgeAI
+# With Poetry:
+poetry run python src/main.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 
 
-# (recommended) create a virtual env
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+# With Docker (from docker/ directory):
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 main
 
-# install Python deps
-pip install -r requirements.txt
-pip install matplotlib colorama
-
-# create your env file
-cp .env.example .env  # if present, else create .env and paste the variables above
+# On Windows:
+run.bat --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 main
 ```
 
-### How to run
+#### Running the Backtester (with Poetry)
+```bash
+poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA
+```
 
-Run commands from the project root unless otherwise noted. For Python modules that import within `src/`, change directory into `src` first.
+#### Running the Backtester (with Docker)
+```bash
+# Navigate to the docker directory first
+cd docker
 
-#### 1) Single-stock agent analysis
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA backtest
+
+# On Windows:
+run.bat --ticker AAPL,MSFT,NVDA backtest
+```
+
+**Example Output:**
+<img width="941" alt="Screenshot 2025-01-06 at 5 47 52 PM" src="https://github.com/user-attachments/assets/00e794ea-8628-44e6-9a84-8f8a31ad3b47" />
+
+
+You can optionally specify the start and end dates to backtest over a specific time period.
 
 ```bash
-cd src
-python main.py AAPL                 # analyze one ticker with both agents
-python main.py AAPL TSLA NVDA      # compare multiple tickers
+# With Poetry:
+poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01
+
+# With Docker (from docker/ directory):
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 backtest
+
+# On Windows:
+run.bat --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 backtest
 ```
 
-#### 2) Moderated debate (per stock)
-
+You can also specify a `--ollama` flag to run the backtester using local LLMs.
 ```bash
-cd src
-python consensus_debate.py AAPL
-python consensus_debate.py AAPL TSLA NVDA
+# With Poetry:
+poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA --ollama
+
+# With Docker (from docker/ directory):
+# On Linux/Mac:
+./run.sh --ticker AAPL,MSFT,NVDA --ollama backtest
+
+# On Windows:
+run.bat --ticker AAPL,MSFT,NVDA --ollama backtest
 ```
 
-#### 3) Portfolio debate (rebalancing JSON output)
+### 🖥️ Web Application
 
+The new way to run the AI Hedge Fund is through our web application that provides a user-friendly interface. **This is recommended for most users, especially those who prefer visual interfaces over command line tools.**
+
+<img width="1721" alt="Screenshot 2025-06-28 at 6 41 03 PM" src="https://github.com/user-attachments/assets/b95ab696-c9f4-416c-9ad1-51feb1f5374b" />
+
+#### For Mac/Linux:
 ```bash
-cd src
-
-# Predefined portfolios: tech_growth, value_dividend, balanced_mix, ai_innovation
-python portfolio_debate.py tech_growth
-
-# Custom portfolio (weights must sum to 1.0)
-python portfolio_debate.py custom AAPL:0.4 MSFT:0.3 GOOGL:0.3
-
-# Quarterly, with historical quarterly context
-python portfolio_debate.py quarterly tech_growth
-python portfolio_debate.py quarterly custom AAPL:0.5 MSFT:0.3 GOOGL:0.2
+cd app && ./run.sh
 ```
 
-On completion, a trading actions JSON file is saved at the repo root, e.g. `trading_actions_regular_<portfolio>.json` or `trading_actions_quarterly_<portfolio>.json`.
-
-#### 4) Backtesting (portfolio debate integrated)
-
+If you get a "permission denied" error, run this first:
 ```bash
-cd src
-# Usage: python portfolio_backtester.py <portfolio_name> [start_date] [end_date] [initial_capital]
-python portfolio_backtester.py tech_growth
-python portfolio_backtester.py tech_growth 2024-01-01 2024-12-31 100000
+cd app && chmod +x run.sh && ./run.sh
 ```
 
-Outputs are written to `backtest_results/`:
-
-- `backtest_data.json`: consolidated iterations (portfolio value, cash, positions, executed trades, prices)
-- `backtest_master_log.jsonl`: one-line summary per run (final value, returns, Sharpe, drawdown, trades)
-- `latest_portfolio_state.json`: last known portfolio snapshot and performance
-
-You can also quickly run a one-year test:
-
+#### For Windows:
 ```bash
-cd src
-python test_portfolio_backtest.py [portfolio_name] [initial_capital]
-# example
-python test_portfolio_backtest.py tech_growth 100000
+# Go to /app directory
+cd app
+
+# Run the app
+\.run.bat
 ```
 
-### Dashboard (optional)
+**That's it!** These scripts will:
+1. Check for required dependencies (Node.js, Python, Poetry)
+2. Install all dependencies automatically  
+3. Start both frontend and backend services
+4. **Automatically open your web browser** to the application
 
-```bash
-cd dashboard
-npm install
-npm run dev
-```
 
-Open the URL printed by Vite. The dashboard expects to find `backtest_results/` in the project root and will visualize `backtest_data.json` and `latest_portfolio_state.json` generated by the backtester.
+#### Detailed Setup Instructions
 
-### Project structure
+For detailed setup instructions, troubleshooting, and advanced configuration options, see:
+- [Full-Stack App Documentation](./app/README.md)
+- [Frontend Documentation](./app/frontend/README.md)  
+- [Backend Documentation](./app/backend/README.md)
 
-```
-HedgeAI/
-├── src/
-│   ├── agents/                       # Buffett/Wood agents + moderator
-│   ├── consensus_debate.py           # Single-stock moderated debate
-│   ├── portfolio_debate.py           # Portfolio-level debates and JSON actions
-│   ├── portfolio_backtester.py       # Backtester using the debate system
-│   ├── quarterly_data_extractor.py   # Quarterly context for debates
-│   ├── tools/                        # API client + caching/models
-│   ├── utils.py                      # LLM client selection, demo mode, helpers
-│   └── main.py                       # CLI to analyze tickers with both agents
-├── backtest_results/                 # Backtester outputs (created at run-time)
-├── portfolios/                       # Example portfolio JSONs
-├── dashboard/                        # React + Vite dashboard
-├── requirements.txt
-└── README.md
-```
 
-### Tips and troubleshooting
+## Contributing
 
-- **Imports/paths**: For Python CLIs under `src/`, run from inside `src` (e.g., `cd src && python portfolio_debate.py tech_growth`).
-- **Missing deps**: If plots or colors fail, install `matplotlib` and `colorama` (`pip install matplotlib colorama`).
-- **API rate limits**: The client applies moderate backoff on HTTP 429s. Long runs may pause; ensure you have a valid API key and sufficient quota.
-- **Demo mode**: Without real LLM keys, the system returns structured demo outputs so you can test end-to-end flows.
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-### License
+**Important**: Please keep your pull requests small and focused.  This will make it easier to review and merge.
 
-For internal/experimental use. Add a license of your choice if distributing.
+## Feature Requests
+
+If you have a feature request, please open an [issue](https://github.com/virattt/ai-hedge-fund/issues) and make sure it is tagged with `enhancement`.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
