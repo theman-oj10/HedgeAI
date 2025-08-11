@@ -215,37 +215,6 @@ cd docker
 run.bat --ticker AAPL,MSFT,NVDA backtest
 ```
 
-**Example Output:**
-<img width="941" alt="Screenshot 2025-01-06 at 5 47 52 PM" src="https://github.com/user-attachments/assets/00e794ea-8628-44e6-9a84-8f8a31ad3b47" />
-
-
-You can optionally specify the start and end dates to backtest over a specific time period.
-
-```bash
-# With Poetry:
-poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01
-
-# With Docker (from docker/ directory):
-# On Linux/Mac:
-./run.sh --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 backtest
-
-# On Windows:
-run.bat --ticker AAPL,MSFT,NVDA --start-date 2024-01-01 --end-date 2024-03-01 backtest
-```
-
-You can also specify a `--ollama` flag to run the backtester using local LLMs.
-```bash
-# With Poetry:
-poetry run python src/backtester.py --ticker AAPL,MSFT,NVDA --ollama
-
-# With Docker (from docker/ directory):
-# On Linux/Mac:
-./run.sh --ticker AAPL,MSFT,NVDA --ollama backtest
-
-# On Windows:
-run.bat --ticker AAPL,MSFT,NVDA --ollama backtest
-```
-
 ### 🖥️ Web Application
 
 The new way to run the AI Hedge Fund is through our web application that provides a user-friendly interface. **This is recommended for most users, especially those who prefer visual interfaces over command line tools.**
